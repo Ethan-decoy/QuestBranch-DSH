@@ -1,0 +1,52 @@
+{
+  "name": "questbranch-dsh",
+  "version": "0.1.0-dev.1",
+  "private": true,
+  "type": "module",
+  "description": "Branching research workspace for DeepSeek Harness",
+  "packageManager": "pnpm@11.1.3",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "pnpm format:check && pnpm typecheck && pnpm test",
+    "build": "pnpm typecheck && node scripts/build-dsh.mjs",
+    "build:dsh": "pnpm build",
+    "pack:dsh": "pnpm --dir release/dsh pack --pack-destination ..",
+    "format": "prettier --write src tests config scripts *.ts *.json *.yaml README.md docs",
+    "format:check": "prettier --check src tests config scripts *.ts *.json *.yaml README.md docs"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "3.1.1",
+    "@xyflow/react": "12.12.0",
+    "clsx": "2.1.1",
+    "lucide-react": "1.57.0",
+    "proper-lockfile": "4.1.2",
+    "radix-ui": "1.8.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "zod": "4.6.7",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "24.19.2",
+    "@types/proper-lockfile": "4.1.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "prettier": "3.9.10",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ethan-decoy/QuestBranch-DSH.git"
+  }
+}

@@ -1,10 +1,8 @@
 node_modules/
-out/
-dist-web/
 release/
+artifacts/
 .questbranch/
 .env
 .env.*
-!.env.example
-artifacts/
 *.log
+*.sqlite*

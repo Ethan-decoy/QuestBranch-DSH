@@ -1,0 +1,474 @@
+import { useEffect, useRef, useState } from 'react'
+import { version } from '../../package.json'
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  BookOpen,
+  Columns2,
+  GitBranch,
+  Layers3,
+  LoaderCircle,
+  Plus,
+  Search,
+  Settings,
+  Sparkles,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  X,
+} from 'lucide-react'
+import { useApp, download, flushView } from './state'
+import { branchPrerequisite, branchReport } from '../research/branching'
+import { client } from './client'
+import { Button, Logo, SignalIcon, StatusLabel, nodeStatus } from './components'
+import { ResearchGraph } from './graph'
+import { freshBranchCounts, unseenGraphNodes } from './graph-visuals'
+import { ResearchDetails } from './details'
+import { AppDialogs } from './dialogs'
+import { useTheme } from './theme'
+import { displayBranchColor } from './theme-colors'
+import { PanelResizer } from './panel-resizer'
+import { resizeWorkbenchPane, workbenchLayout, type WorkbenchPane } from './workbench-layout'
+
+export function App() {
+  const theme = useTheme((state) => state.theme)
+  const snapshot = useApp((s) => s.snapshot),
+    workspaceId = useApp((s) => s.workspaceId),
+    view = useApp((s) => s.view),
+    open = useApp((s) => s.open),
+    select = useApp((s) => s.select),
+    changeWorkspace = useApp((s) => s.workspace),
+    error = useApp((s) => s.error),
+    layoutWidths = useApp((s) => s.layoutWidths),
+    setLayoutWidths = useApp((s) => s.setLayoutWidths),
+    readingMode = useApp((s) => s.readingMode),
+    pane = useApp((s) => s.compactPane),
+    showPane = useApp((s) => s.showPane),
+    fileInput = useRef<HTMLInputElement>(null),
+    [exporting, setExporting] = useState(false),
+    [compact, setCompact] = useState(() => matchMedia('(max-width: 1100px)').matches),
+    [containerWidth, setContainerWidth] = useState(() => window.innerWidth),
+    [navigationOpen, setNavigationOpen] = useState(false),
+    [navigationCollapsed, setNavigationCollapsed] = useState(false),
+    menuButton = useRef<HTMLButtonElement>(null),
+    closeNavigation = useRef<HTMLButtonElement>(null)
+  const closeNav = () => {
+    setNavigationOpen(false)
+    if (compact) requestAnimationFrame(() => menuButton.current?.focus())
+  }
+  const sidebarHidden = compact ? !navigationOpen : navigationCollapsed
+  const layout = workbenchLayout(containerWidth, layoutWidths, !sidebarHidden)
+  const resizePane = (pane: WorkbenchPane, width: number) =>
+    setLayoutWidths(resizeWorkbenchPane(layout, layoutWidths, pane, width))
+  const navigate = (id: string) => {
+    select(id)
+    if (compact) closeNav()
+  }
+  useEffect(() => {
+    const media = matchMedia('(max-width: 1100px)')
+    const resize = () => setContainerWidth(window.innerWidth)
+    const change = () => {
+      setCompact(media.matches)
+      setNavigationOpen(false)
+    }
+    media.addEventListener('change', change)
+    window.addEventListener('resize', resize)
+    const observer = new ResizeObserver(resize)
+    observer.observe(document.documentElement)
+    resize()
+    return () => {
+      media.removeEventListener('change', change)
+      window.removeEventListener('resize', resize)
+      observer.disconnect()
+    }
+  }, [])
+  useEffect(() => {
+    let stopped = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let refreshing = false
+    const poll = async () => {
+      if (stopped || document.hidden || refreshing) return
+      refreshing = true
+      await useApp.getState().refresh()
+      refreshing = false
+      if (!stopped && !document.hidden) {
+        const running = useApp.getState().snapshot?.runs.some((run) => run.status === 'running')
+        timer = setTimeout(() => void poll(), running ? 250 : 1100)
+      }
+    }
+    const visibility = () => {
+      clearTimeout(timer)
+      if (!document.hidden) void poll()
+    }
+    const unsubscribe = useApp.subscribe((state, previous) => {
+      const active = state.snapshot?.runs.some((run) => run.status === 'running')
+      const wasActive = previous.snapshot?.runs.some((run) => run.status === 'running')
+      if (active !== wasActive) visibility()
+    })
+    void poll()
+    document.addEventListener('visibilitychange', visibility)
+    const keys = (event: KeyboardEvent) => {
+      if (event.isComposing) return
+      if (useApp.getState().dialog) return
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        open('search')
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === ',') {
+        event.preventDefault()
+        open('settings')
+      }
+    }
+    window.addEventListener('keydown', keys)
+    window.addEventListener('beforeunload', flushView)
+    return () => {
+      stopped = true
+      clearTimeout(timer)
+      unsubscribe()
+      document.removeEventListener('visibilitychange', visibility)
+      window.removeEventListener('keydown', keys)
+      window.removeEventListener('beforeunload', flushView)
+    }
+  }, [])
+  if (!snapshot || !view)
+    return (
+      <div className="loading-screen">
+        <Logo />
+        <LoaderCircle size={22} className="spin" />
+        <p>{error || '正在打开你的研究空间…'}</p>
+      </div>
+    )
+  const workspace = snapshot.workspaces.find((w) => w.id === workspaceId)!,
+    nodes = snapshot.nodes.filter((n) => n.workspaceId === workspaceId && !n.removedAt),
+    root = nodes.find((n) => n.id === workspace.rootId)!,
+    branches = nodes.filter((n) => n.parentId === root.id),
+    reports = snapshot.reports.filter((r) => r.workspaceId === workspaceId),
+    pending = nodes.filter((n) => !reports.some((r) => r.nodeId === n.id)).length,
+    freshCounts = freshBranchCounts(nodes, unseenGraphNodes(nodes, view))
+  async function exportData() {
+    setExporting(true)
+    try {
+      download(
+        await client.exportWorkspace(workspaceId),
+        `${workspace.name.replace(/[<>:"/\\|?*]/g, '-')}.questbranch.json`,
+      )
+    } catch (error) {
+      useApp.getState().setError(error instanceof Error ? error.message : '导出失败')
+    } finally {
+      setExporting(false)
+    }
+  }
+  async function importData(file: File) {
+    try {
+      if (file.size > 64 * 1024 * 1024)
+        throw new Error('导入文件超过 64 MB，请拆分研究空间或保留原数据库作为备份。')
+      const data = JSON.parse(await file.text()),
+        result = await useApp.getState().command({ type: 'import-workspace', data })
+      changeWorkspace(result.id!)
+    } catch (error) {
+      useApp
+        .getState()
+        .setError(error instanceof Error ? error.message : '导入失败，请检查文件格式')
+    }
+  }
+  return (
+    <div
+      className="app-shell"
+      style={
+        {
+          '--navigation-width': `${layout.navigation}px`,
+          '--panel-width': `${layout.detail}px`,
+        } as React.CSSProperties
+      }
+    >
+      <aside
+        id="workspace-navigation"
+        className="sidebar"
+        hidden={sidebarHidden}
+        aria-label="工作空间导航"
+        onKeyDown={(event) => {
+          if (compact && navigationOpen && event.key === 'Escape') {
+            event.preventDefault()
+            closeNav()
+          }
+        }}
+      >
+        <div className="sidebar-header">
+          <Logo />
+          <button
+            ref={closeNavigation}
+            className="icon-button close-navigation compact-only"
+            aria-label="返回工作台"
+            title="返回工作台"
+            onClick={closeNav}
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="sidebar-navigation">
+          <div className="sidebar-section">
+            <div className="sidebar-label">
+              <span>
+                研究空间 <span className="workspace-total">{snapshot.workspaces.length}</span>
+              </span>
+              <button
+                className="icon-button"
+                aria-label="新建研究空间"
+                title="新建研究空间"
+                onClick={() => open('workspace')}
+              >
+                <Plus size={15} />
+              </button>
+            </div>
+            <nav aria-label="研究空间">
+              {snapshot.workspaces.map((w) => (
+                <button
+                  className={`workspace-item ${w.id === workspaceId ? 'active' : ''}`}
+                  title={w.name}
+                  aria-current={w.id === workspaceId ? 'page' : undefined}
+                  key={w.id}
+                  onClick={() => {
+                    changeWorkspace(w.id)
+                    if (compact) closeNav()
+                  }}
+                >
+                  <span className="workspace-icon">
+                    <GitBranch size={16} />
+                  </span>
+                  <strong>{w.name}</strong>
+                  <span className="workspace-node-count" title="研究节点数">
+                    {snapshot.nodes.filter((n) => n.workspaceId === w.id && !n.removedAt).length}
+                  </span>
+                </button>
+              ))}
+            </nav>
+          </div>
+          <div className="sidebar-section directions">
+            <div className="sidebar-label">
+              研究分支
+              <button
+                className="icon-button"
+                title="回到根问题"
+                aria-label="回到根问题"
+                onClick={() => navigate(root.id)}
+              >
+                <Layers3 size={13} />
+              </button>
+            </div>
+            <button
+              className={`root-link ${view.selectedId === root.id ? 'selected' : ''}`}
+              title={workspace.question}
+              onClick={() => navigate(root.id)}
+            >
+              <span className="tree-root-dot" />
+              <span>{root.title}</span>
+            </button>
+            <nav className="branch-nav" aria-label="研究分支">
+              {branches.map((branch) => (
+                <button
+                  key={branch.id}
+                  className={view.selectedId === branch.id ? 'selected' : ''}
+                  title={branch.question}
+                  onClick={() => navigate(branch.id)}
+                >
+                  <span className="branch-line" />
+                  <i style={{ background: displayBranchColor(branch.color, theme) }} />
+                  <span className="branch-title">{branch.title}</span>
+                  {(freshCounts.get(branch.id) ?? 0) > 0 && (
+                    <span className="graph-new-badge" title="新增方向尚未查看">
+                      新 {freshCounts.get(branch.id)}
+                    </span>
+                  )}
+                  <StatusLabel status={nodeStatus(branch, snapshot)} compact />
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+        <div className="sidebar-bottom">
+          <button
+            className="icon-button"
+            aria-label="模型与连接"
+            title="模型与连接"
+            onClick={() => open('models')}
+          >
+            <Sparkles size={16} />
+          </button>
+          <button
+            className="icon-button"
+            aria-label="设置"
+            title="设置 (Ctrl+,)"
+            onClick={() => open('settings')}
+          >
+            <Settings size={16} />
+          </button>
+          <button
+            className="icon-button"
+            aria-label="导入研究资料"
+            title="导入研究资料"
+            onClick={() => fileInput.current?.click()}
+          >
+            <ArrowUpFromLine size={15} />
+          </button>
+          <span
+            className="local-label"
+            title={`本地存储 · QuestBranch ${client.host?.version ?? version}`}
+          >
+            v{client.host?.version ?? version}
+          </span>
+        </div>
+      </aside>
+      <PanelResizer
+        label="导航区域宽度"
+        width={layout.navigation}
+        {...layout.limits.navigation}
+        hidden={sidebarHidden || compact}
+        onResize={(width) => resizePane('navigation', width)}
+      />
+      <main className="workspace-main" hidden={compact && navigationOpen}>
+        <header className="topbar">
+          <button
+            ref={menuButton}
+            className="icon-button navigation-toggle"
+            aria-label={
+              compact ? '打开工作空间导航' : sidebarHidden ? '展开工作空间导航' : '收起工作空间导航'
+            }
+            title={compact ? '打开导航' : sidebarHidden ? '展开导航' : '收起导航'}
+            aria-controls="workspace-navigation"
+            aria-expanded={!sidebarHidden}
+            onClick={() => {
+              if (compact) {
+                setNavigationOpen(true)
+                requestAnimationFrame(() => closeNavigation.current?.focus())
+              } else setNavigationCollapsed(!navigationCollapsed)
+            }}
+          >
+            {compact ? (
+              <Menu size={18} />
+            ) : sidebarHidden ? (
+              <PanelLeftOpen size={18} />
+            ) : (
+              <PanelLeftClose size={18} />
+            )}
+          </button>
+          {sidebarHidden && <Logo small />}
+          <div className="workspace-breadcrumb">
+            <strong title={workspace.name}>{workspace.name}</strong>
+            <span className="workspace-count">
+              {nodes.length} 节点 <span>·</span> {pending} 待研究
+            </span>
+          </div>
+          <div className="view-tabs compact-only" aria-label="工作区域">
+            <button
+              className={pane === 'map' ? 'active' : ''}
+              aria-label="研究图谱"
+              aria-pressed={pane === 'map'}
+              onClick={() => showPane('map')}
+            >
+              <GitBranch size={15} />
+              图谱
+            </button>
+            <button
+              className={pane === 'detail' ? 'active' : ''}
+              aria-label="研究详情"
+              aria-pressed={pane === 'detail'}
+              onClick={() => showPane('detail')}
+            >
+              <BookOpen size={15} />
+              详情
+            </button>
+          </div>
+          <div className="topbar-actions">
+            <button
+              className="icon-button search-button"
+              onClick={() => open('search')}
+              aria-label="搜索研究"
+              title="搜索研究 · Ctrl K"
+            >
+              <Search size={15} />
+            </button>
+            <Button
+              variant="ghost"
+              aria-label="分支比较"
+              title="分支比较"
+              onClick={() => open('compare')}
+            >
+              <Columns2 size={14} />
+              <span className="action-label">比较</span>
+            </Button>
+            <Button
+              aria-label="添加研究方向"
+              title={
+                branchReport(snapshot, view.selectedId, view) ? '添加研究方向' : branchPrerequisite
+              }
+              disabled={!branchReport(snapshot, view.selectedId, view)}
+              onClick={() => open('node')}
+            >
+              <Plus size={14} />
+              <span className="action-label">新方向</span>
+            </Button>
+            <button
+              className="icon-button"
+              title="导出当前研究空间"
+              aria-label="导出研究空间"
+              onClick={() => void exportData()}
+              disabled={exporting}
+            >
+              {exporting ? (
+                <LoaderCircle size={16} className="spin" />
+              ) : (
+                <ArrowDownToLine size={16} />
+              )}
+            </button>
+          </div>
+        </header>
+        <div
+          className={`workspace-content ${readingMode ? 'reading-mode' : ''} ${compact ? 'compact-workspace' : ''}`}
+        >
+          <div className="graph-slot" hidden={readingMode || (compact && pane !== 'map')}>
+            <ResearchGraph />
+          </div>
+          <PanelResizer
+            label="报告区域宽度"
+            width={layout.detail}
+            {...layout.limits.detail}
+            reversed
+            hidden={readingMode || compact}
+            onResize={(width) => resizePane('detail', width)}
+          />
+          <div className="detail-slot" hidden={compact && pane !== 'detail' && !readingMode}>
+            <ResearchDetails key={`${workspaceId}:${view.selectedId}`} />
+          </div>
+        </div>
+      </main>
+      <AppDialogs />
+      <input
+        type="file"
+        ref={fileInput}
+        accept=".json,application/json"
+        hidden
+        aria-label="导入研究文件"
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) void importData(file)
+          event.target.value = ''
+        }}
+      />
+      {error && (
+        <div className="error-toast" role="alert">
+          <div>
+            <SignalIcon tone="error" size={20} />
+            <span>{error}</span>
+          </div>
+          <button
+            className="icon-button"
+            aria-label="关闭提示"
+            onClick={() => useApp.getState().setError('')}
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
