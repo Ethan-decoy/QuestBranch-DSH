@@ -14,9 +14,11 @@
     "check": "pnpm format:check && pnpm typecheck && pnpm test",
     "build": "pnpm typecheck && node scripts/build-dsh.mjs",
     "build:dsh": "pnpm build",
-    "pack:dsh": "pnpm --dir release/dsh pack --pack-destination ..",
-    "format": "prettier --write src tests config scripts *.ts *.json *.yaml README.md docs",
-    "format:check": "prettier --check src tests config scripts *.ts *.json *.yaml README.md docs"
+    "pack:dsh": "pnpm build && node scripts/pack-dsh.mjs",
+    "format": "prettier --write src tests config scripts *.ts *.json *.yaml *.md .github docs",
+    "format:check": "prettier --check src tests config scripts *.ts *.json *.yaml *.md .github docs",
+    "notices": "node scripts/dsh-notices.mjs",
+    "notices:check": "node scripts/dsh-notices.mjs --check"
   },
   "dependencies": {
     "@dagrejs/dagre": "3.1.1",
@@ -48,5 +50,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Ethan-decoy/QuestBranch-DSH.git"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/Ethan-decoy/QuestBranch-DSH#readme",
+  "bugs": {
+    "url": "https://github.com/Ethan-decoy/QuestBranch-DSH/issues"
   }
 }

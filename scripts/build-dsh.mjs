@@ -1,10 +1,24 @@
 import { build } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { resolve, join } from 'node:path'
 
 const destination = resolve('release/dsh')
+const publicDirectory = existsSync('distribution/dsh/package.json')
+  ? resolve('distribution/dsh')
+  : process.cwd()
+const lockHash = createHash('sha256')
+  .update(readFileSync(join(publicDirectory, 'pnpm-lock.yaml')))
+  .digest('hex')
+if (
+  !readFileSync(join(publicDirectory, 'THIRD_PARTY_NOTICES.txt'), 'utf8').includes(
+    `Lockfile SHA-256: ${lockHash}`,
+  )
+)
+  throw new Error('DSH 第三方声明不对应当前锁文件，请在独立源码工作区更新声明')
+readFileSync(join(publicDirectory, 'LICENSE'))
 mkdirSync(destination, { recursive: true })
 await build({
   configFile: false,
@@ -59,10 +73,15 @@ writeFileSync(
   join(destination, 'cordis.patch.yml'),
   '- insert:\n    - id: questbranch\n      name: dsh-plugin-questbranch\n',
 )
-writeFileSync(
-  join(destination, 'README.md'),
-  readFileSync(
-    existsSync('distribution/dsh/README.md') ? 'distribution/dsh/README.md' : 'README.md',
-  ),
-)
+for (const file of [
+  'README.md',
+  'LICENSE',
+  'THIRD_PARTY_NOTICES.txt',
+  'CHANGELOG.md',
+  'docs/development.md',
+  'docs/troubleshooting.md',
+]) {
+  mkdirSync(resolve(destination, file, '..'), { recursive: true })
+  copyFileSync(join(publicDirectory, file), join(destination, file))
+}
 console.log(`DSH plugin built: ${destination}`)

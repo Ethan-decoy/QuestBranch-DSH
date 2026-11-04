@@ -2,11 +2,13 @@
 
 问之的 DeepSeek Harness 非官方研究工作台扩展，由社区独立开发与维护。在 DSH 侧栏打开 QuestBranch，用研究图组织问题，选择分支对话，并保存阶段报告、来源与历史。
 
-**状态：本地开发试用版 `0.1.0-dev.1`，尚未发布 npm 包或 Release，尚未收录到 DSH Discover。** 当前兼容基线为 DSH `0.2.1-rc.5`；Windows 上已在该版本自带的 Host / Web 客户端中完成隔离固定响应验收，包括原生 Agent 工具循环。DSH 桌面窗口、真实厂商研究、macOS 和 Linux 仍待实测。
+**开发者预览候选 `0.1.0-dev.1` · DSH `0.2.1-rc.5` · MIT**
+
+尚未发布 npm 包或 Release，尚未收录到 DSH Discover。当前可以从本仓库构建插件包；提供下载版本后，将出现在[Releases](https://github.com/Ethan-decoy/QuestBranch-DSH/releases)。Windows Host / Web 已完成隔离固定响应验收，包括原生 Agent 工具循环；桌面窗口、真实厂商研究、macOS 和 Linux 的宿主使用仍待实测。
 
 ## 安装试用包
 
-使用已安装的 DSH 自带 CLI。正常退出 DSH 后，在 PowerShell 执行，替换安装路径与附件路径：
+先按[开发说明](docs/development.md)生成 `.tgz` 和 `.sha256`，或使用实际提供的 Release 附件。可在 PowerShell 用 `Get-FileHash '<插件包路径>' -Algorithm SHA256` 核对校验值。使用已安装的 DSH 自带 CLI；正常退出 DSH 后执行，替换安装路径与附件路径：
 
 ```powershell
 & 'C:\path\to\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd' plugin --profile desktop add 'D:\downloads\dsh-plugin-questbranch-0.1.0-dev.1.tgz'
@@ -56,4 +58,8 @@ QuestBranch owns the structure and continuity of exploration, not the authority 
 
 QB 提供研究图、报告与来源；工具权限仍由 DSH 的原生交互处理，研究结论不构成执行授权。公开工具活动在节点聊天中显示，隐藏思考和原始参数不作为普通内容展示。
 
-本仓库承载经筛选的插件源码、安装说明和兼容版本，保持独立的 Git 历史。当前仓库私有，项目尚未指定开源许可证；本扩展使用官方扩展机制，不代表获得 DSH 官方收录或背书。
+## 反馈与参与
+
+遇到问题先查看[试用排查](docs/troubleshooting.md)，再提交[脱敏反馈](https://github.com/Ethan-decoy/QuestBranch-DSH/issues/new/choose)。开发贡献见[参与说明](https://github.com/Ethan-decoy/QuestBranch-DSH/blob/main/CONTRIBUTING.md)，安全问题见[私下报告说明](https://github.com/Ethan-decoy/QuestBranch-DSH/blob/main/SECURITY.md)。
+
+本扩展的项目源码采用 [MIT](LICENSE)。第三方版权与许可保留在 [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt)，并随插件安装包交付。使用官方扩展机制不代表获得 DSH 官方收录或背书。

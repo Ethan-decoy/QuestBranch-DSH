@@ -4,16 +4,31 @@
   "description": "Branching research workspace inside DeepSeek Harness",
   "private": true,
   "type": "module",
-  "engines": { "dsh": "0.2.1-rc.5" },
+  "engines": {
+    "dsh": "0.2.1-rc.5"
+  },
   "main": "./index.js",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
     "./package.json": "./package.json"
   },
-  "files": ["index.js", "client.js", "chunks", "cordis.patch.yml", "README.md"],
+  "files": [
+    "index.js",
+    "client.js",
+    "chunks",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.txt",
+    "CHANGELOG.md",
+    "docs/development.md",
+    "docs/troubleshooting.md"
+  ],
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
       "inject": [
@@ -29,10 +44,24 @@
     "@deepseek-ai/dsh-llm": "0.2.1-rc.5"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-typert-protocol": { "optional": true },
-    "@deepseek-ai/dsh-home-paths": { "optional": true },
-    "@deepseek-ai/dsh-llm": { "optional": true }
+    "@deepseek-ai/dsh-typert-protocol": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-home-paths": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-llm": {
+      "optional": true
+    }
   },
-  "repository": { "type": "git", "url": "git+https://github.com/Ethan-decoy/QuestBranch-DSH.git" },
-  "keywords": ["dsh-plugin", "deepseek-harness", "research", "mindmap", "questbranch"]
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ethan-decoy/QuestBranch-DSH.git"
+  },
+  "keywords": ["dsh-plugin", "deepseek-harness", "research", "mindmap", "questbranch"],
+  "license": "MIT",
+  "homepage": "https://github.com/Ethan-decoy/QuestBranch-DSH#readme",
+  "bugs": {
+    "url": "https://github.com/Ethan-decoy/QuestBranch-DSH/issues"
+  }
 }

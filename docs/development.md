@@ -5,11 +5,11 @@
 ```powershell
 pnpm install --frozen-lockfile
 pnpm check
-pnpm build
+pnpm notices:check
 pnpm pack:dsh
 ```
 
-构建输出固定在 `release/dsh/`，打包文件位于 `release/dsh-plugin-questbranch-0.1.0-dev.1.tgz`。使用 [README](../README.md) 中的 DSH 官方 CLI 安装这个文件，不能把源码目录或 GitHub 源码压缩包当作安装包。当前未提供 Git URL 安装所需的 `prepare` 流程。
+`pack:dsh` 会先构建，再核对包清单并生成 SHA-256。构建输出固定在 `release/dsh/`，打包文件位于 `release/dsh-plugin-questbranch-0.1.0-dev.1.tgz`，旁有 `.sha256` 文件。使用 [README](../README.md) 中的 DSH 官方 CLI 安装这个文件，不能把源码目录或 GitHub 源码压缩包当作安装包。当前未提供 Git URL 安装所需的 `prepare` 流程。
 
 ## 代码入口
 
@@ -29,5 +29,13 @@ QB 界面使用 React 19，DSH 客户端包装层使用宿主 React。两者通�
 ## 本地验证
 
 自动化测试使用临时 SQLite 数据和模拟宿主接口，不读取模型凭据。安装验证使用独立的 `DSH_HOME`、`DSH_AGENTS_HOME` 和 profile，参考 README 的首次初始化与后续启动步骤。不要对已有资料配置重复执行 `--from-default-profile`。
+
+GitHub Actions 在 Windows 与 Linux 检查源码、构建并生成试用构件，不会发布 npm 或 Release。这些检查不构成对应系统的 DSH 宿主兼容认证。
+
+## 第三方许可
+
+更新依赖后运行 `pnpm notices`，它从 `pnpm licenses list --prod --json` 读取锁定的生产依赖，保留原始版权和许可文本，并补入生成样式所用的 Tailwind 许可。结果为 `THIRD_PARTY_NOTICES.txt`；构建时一并交付。该清单保守覆盖生产依赖，不声称其中每个包都保留在最终 JavaScript 中。
+
+个别 npm 包未附许可文本时，`config/dsh-license-overrides.json` 固定适用版本、上游文本来源与校验值，原文放在 `licenses/`。缺少或不一致会导致检查失败，不能用一份通用 MIT 文本代替不同作者的版权声明。
 
 反馈时提供插件版本、DSH 版本、系统、复现步骤和预期结果。先移除研究正文、账号、令牌及其他个人资料，再分享日志或截图。
