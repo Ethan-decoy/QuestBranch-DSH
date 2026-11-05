@@ -18,6 +18,7 @@ type Turn = {
   toolDisposers: Disposer[]
   mounted?: DshAgent
   lastWrite: number
+  publishTimer?: ReturnType<typeof setTimeout>
   approvals: number
 }
 const object = (value: unknown): Record<string, unknown> =>
@@ -66,7 +67,10 @@ export class DshRuntime {
           const chunk = object(frame.chunk)
           if (frame.type === 'chunk' && chunk.type === 'text-delta') {
             turn.live += String(chunk.text ?? '')
-            if (Date.now() - turn.lastWrite >= 350) this.publish(turn)
+            const delay = 350 - (Date.now() - turn.lastWrite)
+            if (delay <= 0) this.publish(turn)
+            else if (!turn.publishTimer)
+              turn.publishTimer = setTimeout(() => this.publish(turn), delay)
           }
         },
         { global: true },
@@ -166,6 +170,8 @@ export class DshRuntime {
     }
   }
   private publish(turn: Turn) {
+    clearTimeout(turn.publishTimer)
+    turn.publishTimer = undefined
     const run = this.store.run(turn.runId)
     if (run.status !== 'running') return
     turn.lastWrite = Date.now()
@@ -290,6 +296,7 @@ export class DshRuntime {
       this.publish(turn)
       return { model: binding.selection.model, sessionId }
     } finally {
+      clearTimeout(turn.publishTimer)
       signal.removeEventListener('abort', abort)
       // Cancel drains before removing tools. Saved domain operations remain saved.
       if (signal.aborted)

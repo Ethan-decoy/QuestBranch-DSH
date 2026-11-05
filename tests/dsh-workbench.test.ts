@@ -131,6 +131,40 @@ async function settle(f: ReturnType<typeof fixture>, id: string) {
 }
 
 describe('DSH workbench research adapter', () => {
+  it('publishes a paused text stream promptly and retains its last text on cancellation', async () => {
+    vi.useFakeTimers()
+    try {
+      const f = fixture()
+      const stream = (sessionId: string, text: string) =>
+        f.events.emit('agent/assistant-stream', {
+          agent: f.agents.get(sessionId),
+          frame: { type: 'chunk', chunk: { type: 'text-delta', text } },
+        })
+      f.respond(async (sessionId) => {
+        stream(sessionId, '正在等待外部材料')
+      })
+      const result = await f.service.command({
+        type: 'send-message',
+        nodeId: f.nodeId,
+        message: '研究并等待材料',
+      })
+      await vi.advanceTimersByTimeAsync(350)
+      const live = f.store.run(result.id!)
+      expect(live.status).toBe('running')
+      expect(live.phase).toBe('正在回复')
+      expect(live.output).toBe('正在等待外部材料')
+      stream(f.bindings.get(f.nodeId).sessionId, '，继续保留这段回复')
+      await f.service.command({ type: 'cancel-research', runId: result.id! })
+      await vi.advanceTimersByTimeAsync(0)
+      const stopped = f.store.run(result.id!)
+      expect(stopped.status).toBe('cancelled')
+      expect(stopped.output).toBe('正在等待外部材料，继续保留这段回复')
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(f.store.run(result.id!)).toEqual(stopped)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
   it('waits for an in-flight host model change before admitting a research prompt', async () => {
     const f = fixture()
     let release!: () => void
