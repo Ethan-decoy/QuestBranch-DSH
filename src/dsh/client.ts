@@ -23,36 +23,47 @@ export function apply(ctx: ClientContext) {
           return
         const { id, request } = event.data
         if (!Number.isSafeInteger(id) || !request || typeof request !== 'object') return
-        void ctx.connection.rpc
-          .call('/api', 'questbranch/request', { args: { payload: request } }, lifetime.signal)
-          .then(
-            (result) => {
-              if (!lifetime.signal.aborted)
-                frame.current?.contentWindow?.postMessage(
-                  {
-                    kind: 'qb-dsh-result',
-                    channel,
-                    id,
-                    ...(result.ok
-                      ? { value: result.value }
-                      : { error: result.error?.message ?? 'DSH 调用失败' }),
-                  },
-                  targetOrigin,
-                )
-            },
-            (error) => {
-              if (!lifetime.signal.aborted)
-                frame.current?.contentWindow?.postMessage(
-                  {
-                    kind: 'qb-dsh-result',
-                    channel,
-                    id,
-                    error: error instanceof Error ? error.message : 'DSH 连接中断',
-                  },
-                  targetOrigin,
-                )
-            },
-          )
+        const result: ReturnType<ClientContext['connection']['rpc']['call']> =
+          request.method === 'manage-plugin'
+            ? Promise.resolve().then(() => {
+                if (Object.keys(request).length !== 1) throw new Error('无效的插件管理请求')
+                ctx.layout.selectPanel('plugins')
+                return { ok: true }
+              })
+            : ctx.connection.rpc.call(
+                '/api',
+                'questbranch/request',
+                { args: { payload: request } },
+                lifetime.signal,
+              )
+        void result.then(
+          (result) => {
+            if (!lifetime.signal.aborted)
+              frame.current?.contentWindow?.postMessage(
+                {
+                  kind: 'qb-dsh-result',
+                  channel,
+                  id,
+                  ...(result.ok
+                    ? { value: result.value }
+                    : { error: result.error?.message ?? 'DSH 调用失败' }),
+                },
+                targetOrigin,
+              )
+          },
+          (error) => {
+            if (!lifetime.signal.aborted)
+              frame.current?.contentWindow?.postMessage(
+                {
+                  kind: 'qb-dsh-result',
+                  channel,
+                  id,
+                  error: error instanceof Error ? error.message : 'DSH 连接中断',
+                },
+                targetOrigin,
+              )
+          },
+        )
       }
       const theme = () => {
         const dark = getComputedStyle(document.body).colorScheme.includes('dark')
@@ -77,7 +88,7 @@ export function apply(ctx: ClientContext) {
     }, [])
     return createElement('iframe', {
       ref: frame,
-      title: 'QuestBranch 研究工作台',
+      title: 'QuestBranch',
       srcDoc: html.current,
       sandbox: 'allow-scripts allow-same-origin allow-forms allow-downloads',
       style: { display: 'block', width: '100%', height: '100%', border: 0, minHeight: 0 },

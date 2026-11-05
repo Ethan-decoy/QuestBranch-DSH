@@ -1,12 +1,15 @@
 import { useId, useRef, useState } from 'react'
-import { FolderOpen, Keyboard, Sun } from 'lucide-react'
+import { FolderOpen, Keyboard, Languages, Sun } from 'lucide-react'
 import { Modal, Button, Feedback } from './components'
 import { useApp } from './state'
 import { AppearancePanel } from './settings/appearance-panel'
 import { ShortcutsPanel } from './settings/shortcuts-panel'
 import { StorageSettingsPanel, useStorageSettings } from './settings/storage-panel'
+import { useTranslation } from 'react-i18next'
+import { GeneralPanel } from './settings/general-panel'
 
 export function SettingsDialog() {
+  const { t } = useTranslation()
   const section = useApp((s) => s.settingsSection)
   const setSection = useApp((s) => s.setSettingsSection)
   const open = useApp((s) => s.open)
@@ -17,19 +20,20 @@ export function SettingsDialog() {
   const storage = useStorageSettings({ setError, setMessage })
   const { relocating, choosingDirectory } = storage
   return (
-    <Modal title="设置" wide className="settings-modal" locked={relocating}>
+    <Modal title={t('设置')} wide className="settings-modal" locked={relocating}>
       <div className="settings-layout">
         <div
           className="settings-tabs"
           role="tablist"
-          aria-label="设置分类"
+          aria-label={t('设置分类')}
           aria-orientation="vertical"
         >
           {(
             [
-              ['appearance', Sun, '外观'],
-              ['shortcuts', Keyboard, '快捷键'],
-              ['storage', FolderOpen, '本地存储'],
+              ['general', Languages, t('通用')],
+              ['appearance', Sun, t('外观')],
+              ['shortcuts', Keyboard, t('快捷键')],
+              ['storage', FolderOpen, t('本地存储')],
             ] as const
           ).map(([key, Icon, label], index, tabs) => (
             <button
@@ -71,6 +75,15 @@ export function SettingsDialog() {
           <div className="settings-content">
             <section
               role="tabpanel"
+              id={`${tabsId}-settings-panel-general`}
+              aria-labelledby={`${tabsId}-settings-tab-general`}
+              hidden={section !== 'general'}
+              tabIndex={0}
+            >
+              <GeneralPanel />
+            </section>
+            <section
+              role="tabpanel"
               id={`${tabsId}-settings-panel-shortcuts`}
               aria-labelledby={`${tabsId}-settings-tab-shortcuts`}
               hidden={section !== 'shortcuts'}
@@ -106,11 +119,13 @@ export function SettingsDialog() {
           <div className="modal-footer split settings-footer">
             <span className="settings-save-status" role="status">
               <span className="save-dot" />
-              {section === 'appearance'
-                ? '外观即时保存'
-                : section === 'shortcuts'
-                  ? '快捷键即时保存'
-                  : '已保存'}
+              {section === 'general'
+                ? t('设置即时保存')
+                : section === 'appearance'
+                  ? t('外观即时保存')
+                  : section === 'shortcuts'
+                    ? t('快捷键即时保存')
+                    : t('已保存')}
             </span>
             <Button
               type="button"
@@ -118,7 +133,7 @@ export function SettingsDialog() {
               disabled={relocating || choosingDirectory}
               onClick={() => open(null)}
             >
-              完成
+              {t('完成')}
             </Button>
           </div>
         </fieldset>

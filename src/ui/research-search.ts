@@ -1,5 +1,6 @@
 import type { Snapshot } from '../research/types'
 import { ancestorPath } from '../research/context'
+import i18next from '../i18n'
 
 export type ResearchSearchHit = {
   kind: 'node' | 'report' | 'source'
@@ -51,7 +52,7 @@ export function searchResearch(
           nodeId: node.id,
           title: node.title,
           excerpt: excerpt(text, query),
-          label: '研究',
+          label: i18next.t('研究'),
         })
     }
   // Empty input is a node directory, not an exhaustive list of every stored paragraph.
@@ -68,7 +69,7 @@ export function searchResearch(
         reportId: report.id,
         title: report.title,
         excerpt: excerpt(report.markdown, query),
-        label: `报告 · v${version}`,
+        label: i18next.t('报告 · v{{version}}', { version }),
       })
     if (kind === 'all' || kind === 'source')
       for (const source of report.sources)
@@ -80,7 +81,7 @@ export function searchResearch(
             sourceId: source.id,
             title: source.title,
             excerpt: excerpt(source.excerpt || source.url, query),
-            label: `来源 · 报告 v${version}`,
+            label: i18next.t('来源 · 报告 v{{version}}', { version }),
           })
   }
   return hits

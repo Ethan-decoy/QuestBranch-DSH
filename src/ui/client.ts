@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import type { ResearchClient, Snapshot } from '../research/types'
 import { createConnectionStore } from './provider-connection'
 declare global {
@@ -20,7 +21,7 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
         },
   )
   const data = await response.json()
-  if (!response.ok) throw new Error(data.error ?? '本地服务暂时无法连接')
+  if (!response.ok) throw new Error(data.error ?? t('本地服务暂时无法连接'))
   return data as T
 }
 function snapshot(): Promise<Snapshot>

@@ -1,3 +1,4 @@
+import { uiLocale } from '../i18n'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useEffect, useRef } from 'react'
@@ -5,6 +6,8 @@ import { LoaderCircle, MessageSquare, FileText } from 'lucide-react'
 import { useApp } from './state'
 import { Button, Feedback } from './components'
 import { AgentActivity, ToolActivities } from './agent-activity'
+import { useTranslation } from 'react-i18next'
+import { runtimeLabel } from './i18n-labels'
 
 export function Conversation({
   nodeId,
@@ -13,6 +16,7 @@ export function Conversation({
   nodeId: string
   onReadReport: () => void
 }) {
+  const { t } = useTranslation()
   const snapshot = useApp((state) => state.snapshot)!
   const messages = snapshot.messages.filter((message) => message.nodeId === nodeId)
   const runs = snapshot.runs.filter((run) => run.nodeId === nodeId)
@@ -55,16 +59,16 @@ export function Conversation({
     if (container && follow.current) container.scrollTop = container.scrollHeight
   }, [nodeId, messages.length, latest?.output, activityVersion])
   return (
-    <section ref={root} className="conversation" aria-label="节点对话">
+    <section ref={root} className="conversation" aria-label={t('节点对话')}>
       {!messages.length && (
         <div className="conversation-empty">
           <MessageSquare size={25} strokeWidth={1.4} />
-          <h3>开始对话</h3>
-          <p>在下方输入问题。</p>
+          <h3>{t('开始对话')}</h3>
+          <p>{t('在下方输入问题。')}</p>
           {!!reports.length && (
             <Button onClick={onReadReport}>
               <FileText size={14} />
-              阅读已有的 {reports.length} 份报告
+              {t('阅读已有的 {{length}} 份报告', { length: reports.length })}
             </Button>
           )}
         </div>
@@ -79,12 +83,12 @@ export function Conversation({
               <strong>
                 {assistant
                   ? run?.agent?.name || (run?.provider === 'codex' ? 'Codex' : 'AI')
-                  : '你'}
+                  : t('你')}
               </strong>
               <span>
                 {assistant
                   ? run?.model
-                  : new Date(message.createdAt).toLocaleTimeString('zh-CN', {
+                  : new Date(message.createdAt).toLocaleTimeString(uiLocale(), {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
@@ -114,7 +118,7 @@ export function Conversation({
             {assistant && run?.status === 'running' && (
               <div className="chat-progress" role="status">
                 <LoaderCircle className="spin" size={13} />
-                {run.phase}
+                {runtimeLabel(run.phase)}
               </div>
             )}
             {assistant &&
@@ -133,8 +137,8 @@ export function Conversation({
                 }
               >
                 {run.status === 'cancelled'
-                  ? '这次回复已停止，已有内容保留。'
-                  : '应用关闭时回复中断，已有内容保留。'}
+                  ? t('这次回复已停止，已有内容保留。')
+                  : t('应用关闭时回复中断，已有内容保留。')}
               </small>
             )}
           </article>

@@ -26,6 +26,9 @@ export type DshCall =
   | { method: 'models'; nodeId: string }
   | { method: 'select-model'; nodeId: string; selection: HostSelection }
 
+/** Client navigation stays in the browser; it never grants a Host management RPC. */
+export type DshClientCall = DshCall | { method: 'manage-plugin' }
+
 export type DshBootstrap = { snapshot: Snapshot; version: string }
 
 /** The small, versioned slice of the installed DSH Host used by this adapter. */
@@ -81,6 +84,7 @@ export type DshContext = {
 }
 
 export type ClientContext = {
+  layout: { selectPanel(panelId: string): void }
   slots: {
     inject(name: string, register: () => unknown): unknown
     register(options: Record<string, unknown>, renderer: unknown): unknown

@@ -2,7 +2,7 @@
 
 问之的 DeepSeek Harness 非官方研究工作台扩展，由社区独立开发与维护。在 DSH 侧栏打开 QuestBranch，用研究图组织问题，选择分支对话，并保存阶段报告、来源与历史。
 
-**开发者预览候选 `0.1.0-dev.1` · DSH `0.2.1-rc.5` · MIT**
+**开发者预览候选 `0.1.0-dev.2` · DSH `0.2.1-rc.5` · MIT**
 
 尚未发布 npm 包或 Release，尚未收录到 DSH Discover。当前可以从本仓库构建插件包；提供下载版本后，将出现在[Releases](https://github.com/Ethan-decoy/QuestBranch-DSH/releases)。Windows Host / Web 已完成隔离固定响应验收，包括原生 Agent 工具循环；桌面窗口、真实厂商研究、macOS 和 Linux 的宿主使用仍待实测。
 
@@ -11,10 +11,12 @@
 先按[开发说明](docs/development.md)生成 `.tgz` 和 `.sha256`，或使用实际提供的 Release 附件。可在 PowerShell 用 `Get-FileHash '<插件包路径>' -Algorithm SHA256` 核对校验值。使用已安装的 DSH 自带 CLI；正常退出 DSH 后执行，替换安装路径与附件路径：
 
 ```powershell
-& 'C:\path\to\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd' plugin --profile desktop add 'D:\downloads\dsh-plugin-questbranch-0.1.0-dev.1.tgz'
+& 'C:\path\to\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd' plugin --profile desktop add 'D:\downloads\dsh-plugin-questbranch-0.1.0-dev.2.tgz'
 ```
 
 重开 DSH，在侧栏选择 **QuestBranch**。账号、模型、工具和技能先在 DSH 配置；在 QB 输入栏选择宿主提供的模型与思考强度。新建研究空间后可以直接对话；明确要求保存报告或创建方向时，由 Agent 调用 QB 工具完成。
+
+界面默认简体中文，可在 **设置 → 通用 → 界面语言** 选择 English，重开后保留选择。中英文资源随插件提供，离线可用；切换语言不翻译或改写已有研究问题、报告与对话，也不改变 DSH 自身的语言偏好。
 
 `desktop` 是 DSH 桌面的资料配置。初次试用建议使用新的隔离配置；后续启动保留前三行的环境与路径设置，跳过初始化和安装两行：
 
@@ -25,11 +27,21 @@ $dshCli = 'C:\path\to\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd'
 # 仅首次创建新的隔离 profile：
 & $dshCli --profile qb-trial --from-default-profile web --dump-config
 # 首次安装或更新附件：
-& $dshCli plugin --profile qb-trial add 'D:\downloads\dsh-plugin-questbranch-0.1.0-dev.1.tgz'
+& $dshCli plugin --profile qb-trial add 'D:\downloads\dsh-plugin-questbranch-0.1.0-dev.2.tgz'
 & $dshCli --profile qb-trial
 ```
 
 路径仅为示例。`--from-default-profile` 会重置目标 profile，不用于日常启动或升级。试用包使用 DSH 官方插件管理入口，不修改 DSH 安装目录。升级时退出宿主，再安装新附件并重启；移除后也重启目标 profile。移除插件可使用 DSH 插件管理页面，或 `dsh plugin --profile desktop remove dsh-plugin-questbranch`；研究资料继续保留。
+
+## 版本更新
+
+QB 侧栏底部显示正在运行的插件版本，点击可打开 DSH 的原生插件管理页面。更新安装由 DSH 处理，QB 不单独轮询或安装更新。
+
+当前提供本地 `.tgz`：停止研究并正常退出目标 profile，备份 QB 资料目录及需要保留的 DSH 原生资料，再按上面的命令安装新版本附件并重启。使用相同的 profile 和研究目录，不能以重新初始化 profile 代替升级。
+
+DSH `0.2.1-rc.5` 尚无新版插件版本列表与更新接口。后续 DSH 的 registry 更新入口还要求插件以自身包名从 registry 安装；文件、目录链接和 Git 来源不会自动转为 registry 来源。本项目尚未启用 npm 分发，不能在当前 `.tgz` 安装中自动检查新版本。宿主版本支持范围仍以各插件包的 `engines.dsh` 为准。
+
+本轮不改变研究库和会话映射格式。更换程序包不等于数据回退；恢复旧包前需核对数据兼容性，必要时在停止写入后恢复完整备份。
 
 ## 源码开发
 

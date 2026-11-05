@@ -1,3 +1,4 @@
+import { statusText } from './i18n-labels'
 import {
   memo,
   useEffect,
@@ -41,6 +42,7 @@ import {
   type DrawnResearch,
 } from './graph-visuals'
 import { useAnimatedGraph, useReducedGraphMotion } from './graph-animation'
+import { useTranslation } from 'react-i18next'
 
 type CardData = {
   [key: string]: unknown
@@ -58,6 +60,7 @@ type CardData = {
 }
 export type ResearchFlowNode = Node<CardData, 'research'>
 const ResearchCard = memo(function ResearchCard({ data, selected }: NodeProps<ResearchFlowNode>) {
+  const { t } = useTranslation()
   const { item, status, running, runningBelow, waiting, waitingBelow, materialBelow, fresh } = data,
     { node, count, collapsed } = item
   const { zoom } = useViewport()
@@ -77,31 +80,39 @@ const ResearchCard = memo(function ResearchCard({ data, selected }: NodeProps<Re
         <StatusLabel status={status} />
         <span className="card-labels">
           {fresh > 0 && (
-            <span className="graph-new-badge" title={`${fresh} 个新增方向尚未查看`}>
-              新 {fresh}
+            <span className="graph-new-badge" title={t('{{fresh}} 个新增方向尚未查看', { fresh })}>
+              {t('新 {{fresh}}', { fresh })}
             </span>
           )}
           {(running || runningBelow > 0) && (
             <span
               className="graph-ai-signal"
-              title={running ? 'AI 正在此研究工作' : `下方 ${runningBelow} 项研究正在运行`}
+              title={
+                running
+                  ? t('AI 正在此研究工作')
+                  : t('下方 {{runningBelow}} 项研究正在运行', { runningBelow })
+              }
             >
               <Sparkles size={10} />
               <span className="research-thinking-sheen">
-                {running ? '研究中' : `${runningBelow} 项运行`}
+                {running ? t('研究中') : t('{{runningBelow}} 项运行', { runningBelow })}
               </span>
             </span>
           )}
           {(waiting || waitingBelow > 0) && (
             <span
               className="graph-waiting-signal"
-              title={waiting ? 'AI 正等待你回应' : `下方 ${waitingBelow} 项研究等待回应`}
+              title={
+                waiting
+                  ? t('AI 正等待你回应')
+                  : t('下方 {{waitingBelow}} 项研究等待回应', { waitingBelow })
+              }
             >
               <CirclePause size={10} />
-              {waiting ? '待回应' : `${waitingBelow} 项待回应`}
+              {waiting ? t('待回应') : t('{{waitingBelow}} 项待回应', { waitingBelow })}
             </span>
           )}
-          {selected && <span className="graph-reading-dot" title="当前阅读" />}
+          {selected && <span className="graph-reading-dot" title={t('当前阅读')} />}
         </span>
       </div>
       <h3 className={running ? 'research-thinking-sheen' : undefined}>{node.title}</h3>
@@ -111,10 +122,10 @@ const ResearchCard = memo(function ResearchCard({ data, selected }: NodeProps<Re
           {collapsed && materialBelow > 0 ? (
             <>
               <Layers3 size={11} />
-              下方 {materialBelow} 项有积累
+              {t('下方 {{materialBelow}} 项有积累', { materialBelow })}
             </>
           ) : !node.parentId ? (
-            '根问题'
+            t('根问题')
           ) : null}
         </span>
         {count > 0 && zoom >= 0.6 && (
@@ -124,13 +135,17 @@ const ResearchCard = memo(function ResearchCard({ data, selected }: NodeProps<Re
             aria-label={
               selected
                 ? collapsed
-                  ? '展开当前分支'
-                  : '收起当前分支'
+                  ? t('展开当前分支')
+                  : t('收起当前分支')
                 : collapsed
-                  ? '展开子研究'
-                  : '收起子研究'
+                  ? t('展开子研究')
+                  : t('收起子研究')
             }
-            title={`${collapsed ? '展开' : '收起'} ${count} 个子方向`}
+            title={
+              collapsed
+                ? t('展开 {{count}} 个子方向', { count })
+                : t('收起 {{count}} 个子方向', { count })
+            }
             onClick={(event) => {
               event.stopPropagation()
               toggleBranch(node.id)
@@ -198,6 +213,7 @@ export function GraphContent({
   locateRequest?: LocateRequest
   onLocated: () => void
 }) {
+  const { t } = useTranslation()
   const snapshot = useApp((s) => s.snapshot)!,
     view = useApp((s) => s.view)!,
     workspaceId = useApp((s) => s.workspaceId),
@@ -331,7 +347,7 @@ export function GraphContent({
         opacity: item.opacity,
         pointerEvents: item.leaving ? 'none' : undefined,
       } as CSSProperties,
-      ariaLabel: `${node.title}，${stage.label}${signals.running.has(node.id) ? '，AI 研究中' : signals.waiting.has(node.id) ? '，等待回应' : ''}`,
+      ariaLabel: `${node.title}，${statusText(stage)}${signals.running.has(node.id) ? t('，AI 研究中') : signals.waiting.has(node.id) ? t('，等待回应') : ''}`,
     }
   })
   for (const region of regions)
@@ -649,8 +665,9 @@ export function GraphContent({
         nodesFocusable={zoom >= 0.6}
         edgesFocusable={false}
         ariaLabelConfig={{
-          'node.a11yDescription.default':
+          'node.a11yDescription.default': t(
             '方向键浏览研究，Enter 阅读，Ctrl+Enter 添加子方向，Shift+Enter 添加同级方向，F2 编辑，空格折叠，Tab 切换控件。',
+          ),
         }}
       >
         <Background color="var(--color-grid)" gap={24} size={0.7} />

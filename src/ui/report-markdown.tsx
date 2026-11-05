@@ -1,5 +1,6 @@
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { useTranslation } from 'react-i18next'
 
 export function reportHeadings(markdown: string) {
   let fence = ''
@@ -19,6 +20,7 @@ export function reportHeadings(markdown: string) {
 }
 
 export function ReportMarkdown({ children }: { children: string }) {
+  const { t } = useTranslation()
   return (
     <Markdown
       remarkPlugins={[remarkGfm]}
@@ -47,7 +49,7 @@ export function ReportMarkdown({ children }: { children: string }) {
           <div
             className="table-scroll"
             role="region"
-            aria-label="报告表格，可横向滚动"
+            aria-label={t('报告表格，可横向滚动')}
             tabIndex={0}
           >
             <table>{children}</table>

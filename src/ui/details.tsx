@@ -1,3 +1,4 @@
+import { uiLocale } from '../i18n'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import {
   ArrowUpRight,
@@ -40,8 +41,11 @@ import { displayBranchColor } from './theme-colors'
 import { ReportMarkdown, reportHeadings } from './report-markdown'
 import { ComposerModelPicker } from './models/composer-picker'
 import { shouldSendMessage, sendShortcutLabel, useShortcuts } from './shortcuts'
+import { useTranslation } from 'react-i18next'
+import { runtimeLabel } from './i18n-labels'
 
 function RunRecord({ run }: { run: ResearchRun }) {
+  const { t } = useTranslation()
   const Container = import.meta.env.DEV ? 'details' : 'article',
     Header = import.meta.env.DEV ? 'summary' : 'div'
   return (
@@ -58,9 +62,9 @@ function RunRecord({ run }: { run: ResearchRun }) {
             )}
           </span>
           <div>
-            <strong>{run.instruction || '研究当前问题'}</strong>
+            <strong>{run.instruction || t('研究当前问题')}</strong>
             <small>
-              {new Date(run.createdAt).toLocaleString('zh-CN', {
+              {new Date(run.createdAt).toLocaleString(uiLocale(), {
                 month: 'short',
                 day: 'numeric',
                 hour: '2-digit',
@@ -73,16 +77,16 @@ function RunRecord({ run }: { run: ResearchRun }) {
         </div>
         <span className={`record-state ${run.status}`}>
           {run.status === 'completed'
-            ? '已完成'
+            ? t('已完成')
             : run.status === 'running'
               ? run.mode === 'chat'
-                ? '回复中'
-                : '生成报告中'
+                ? t('回复中')
+                : t('生成报告中')
               : run.status === 'cancelled'
-                ? '已取消'
+                ? t('已取消')
                 : run.status === 'interrupted'
-                  ? '已中断'
-                  : '未完成'}
+                  ? t('已中断')
+                  : t('未完成')}
         </span>
       </Header>
       {run.error &&
@@ -98,6 +102,7 @@ function RunRecord({ run }: { run: ResearchRun }) {
   )
 }
 function RunDiagnostics({ run }: { run: ResearchRun }) {
+  const { t } = useTranslation()
   const snapshot = useApp((s) => s.snapshot)!,
     changed = run.context.items
       .filter((item) => item.included)
@@ -107,17 +112,20 @@ function RunDiagnostics({ run }: { run: ResearchRun }) {
       })
   return (
     <>
-      <h4>实际使用的上下文</h4>
+      <h4>{t('实际使用的上下文')}</h4>
       <p className="muted small-text">
-        约 {run.context.estimatedTokens.toLocaleString()} / {run.context.budget.toLocaleString()}{' '}
-        tokens · {run.context.policy}
+        {t('约 {{used}} / {{budget}} tokens', {
+          used: run.context.estimatedTokens.toLocaleString(uiLocale()),
+          budget: run.context.budget.toLocaleString(uiLocale()),
+        })}{' '}
+        · {run.context.policy}
       </p>
       <ul className="context-items">
         <li>
-          <Check size={12} /> 根问题、目标与全局约束
+          <Check size={12} /> {t('根问题、目标与全局约束')}
         </li>
         <li>
-          <Check size={12} /> 当前问题、研究路径与本次指令
+          <Check size={12} /> {t('当前问题、研究路径与本次指令')}
         </li>
         {run.context.items.map((item) => (
           <li key={item.reportId}>
@@ -126,7 +134,7 @@ function RunDiagnostics({ run }: { run: ResearchRun }) {
               {item.title}
               <small>
                 {item.reason} ·{' '}
-                {item.included ? (item.excerpted ? '采用摘要' : '采用全文') : '因预算省略'}
+                {item.included ? (item.excerpted ? t('采用摘要') : t('采用全文')) : t('因预算省略')}
               </small>
               <code>{item.reportId.slice(0, 16)}</code>
             </div>
@@ -135,14 +143,17 @@ function RunDiagnostics({ run }: { run: ResearchRun }) {
       </ul>
       {!!run.context.conversation?.includedMessageIds.length && (
         <p className="context-limitation">
-          承接本节点 {run.context.conversation.includedMessageIds.length / 2}{' '}
-          轮对话；消息原文保存在“对话”中。
+          {t('承接本节点 {{count}} 轮对话；消息原文保存在“对话”中。', {
+            count: run.context.conversation.includedMessageIds.length / 2,
+          })}
         </p>
       )}
       {changed.length > 0 && (
         <Feedback tone="warning">
-          <strong>上游报告有更新</strong>
-          {changed.length} 份上游报告已有新版本；本次记录仍保留研究当时采用的版本。
+          <strong>{t('上游报告有更新')}</strong>
+          {t('{{count}} 份上游报告已有新版本；本次记录仍保留研究当时采用的版本。', {
+            count: changed.length,
+          })}
         </Feedback>
       )}
       {run.context.limitations.map((item, i) => (
@@ -151,7 +162,7 @@ function RunDiagnostics({ run }: { run: ResearchRun }) {
         </p>
       ))}
       <details className="raw-details">
-        <summary>查看实际发送的输入</summary>
+        <summary>{t('查看实际发送的输入')}</summary>
         <pre>
           {run.session
             ? JSON.stringify(run.session, null, 2)
@@ -161,13 +172,14 @@ function RunDiagnostics({ run }: { run: ResearchRun }) {
         </pre>
       </details>
       <details className="raw-details">
-        <summary>查看模型原始输出</summary>
-        <pre>{run.output || '尚无输出'}</pre>
+        <summary>{t('查看模型原始输出')}</summary>
+        <pre>{run.output || t('尚无输出')}</pre>
       </details>
     </>
   )
 }
 export function ResearchDetails() {
+  const { t } = useTranslation()
   const sendShortcut = useShortcuts((state) => state.sendMessage)
   const [selectionBusy, setSelectionBusy] = useState(false)
   const theme = useTheme((state) => state.theme)
@@ -335,14 +347,14 @@ export function ResearchDetails() {
     >
       <summary>
         <CircleHelp size={13} />
-        问题
+        {t('问题')}
         <ChevronDown size={11} className="disclosure-marker" />
       </summary>
       <p className="full-question">{node.question}</p>
     </details>
   )
   return (
-    <aside className={`details-panel ${full ? 'expanded' : ''}`} aria-label="研究详情">
+    <aside className={`details-panel ${full ? 'expanded' : ''}`} aria-label={t('研究详情')}>
       <div className="detail-topline">
         <div className="detail-meta">
           <span
@@ -351,11 +363,16 @@ export function ResearchDetails() {
           />{' '}
           <StatusLabel status={status} />
           <span>
-            {node.parentId === null ? '根问题' : `第 ${getDepth(snapshot.nodes, node.id)} 层`}
+            {node.parentId === null
+              ? t('根问题')
+              : t('第 {{val}} 层', { val: getDepth(snapshot.nodes, node.id) })}
           </span>
           <span
             className="detail-subtitle"
-            title={`${reports.length} 份报告 · ${children.length} 个研究方向`}
+            title={t('{{length}} 份报告 · {{length2}} 个研究方向', {
+              length: reports.length,
+              length2: children.length,
+            })}
           >
             <FileText size={12} />
             {reports.length}
@@ -366,8 +383,8 @@ export function ResearchDetails() {
         <div>
           <button
             className="icon-button"
-            title="在图谱中定位"
-            aria-label="在图谱中定位当前研究"
+            title={t('在图谱中定位')}
+            aria-label={t('在图谱中定位当前研究')}
             onClick={() => {
               useApp.getState().locate({ kind: 'node', nodeId: node.id, query: '' })
               useApp.getState().showPane('map')
@@ -378,16 +395,16 @@ export function ResearchDetails() {
           <button
             ref={readingToggle}
             className="icon-button"
-            title={full ? '恢复侧栏' : '展开阅读'}
-            aria-label={full ? '恢复侧栏' : '展开阅读'}
+            title={full ? t('恢复侧栏') : t('展开阅读')}
+            aria-label={full ? t('恢复侧栏') : t('展开阅读')}
             onClick={() => setFull(!full)}
           >
             {full ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
           </button>
           <button
             className="icon-button"
-            title="编辑研究问题"
-            aria-label="编辑研究问题"
+            title={t('编辑研究问题')}
+            aria-label={t('编辑研究问题')}
             onClick={() => open('edit')}
           >
             <Pencil size={15} />
@@ -399,7 +416,10 @@ export function ResearchDetails() {
         {origin ? (
           <button
             className="report-origin"
-            title={`查看来源报告：${origin.title} · v${originVersion}`}
+            title={t('查看来源报告：{{title}} · v{{originVersion}}', {
+              title: origin.title,
+              originVersion,
+            })}
             onClick={() =>
               useApp
                 .getState()
@@ -408,21 +428,24 @@ export function ResearchDetails() {
           >
             <GitBranch size={12} />
             <span>
-              来源：{origin.title} · v{originVersion}
+              {t('来源：{{title}} · v{{originVersion}}', {
+                title: origin.title,
+                originVersion,
+              })}
             </span>
             <ArrowUpRight size={12} />
           </button>
         ) : node.parentId ? (
-          <small className="muted">历史分支 · 来源未记录</small>
+          <small className="muted">{t('历史分支 · 来源未记录')}</small>
         ) : null}
       </div>
-      <div className="detail-tabs" role="tablist" aria-label="研究资料">
+      <div className="detail-tabs" role="tablist" aria-label={t('研究资料')}>
         {(
           [
-            ['chat', '对话', MessageSquare, null],
-            ['report', '研究报告', BookOpen, null],
-            ['sources', '来源', Link2, report?.sources.length ?? 0],
-            ['records', '记录', Clock3, runs.length],
+            ['chat', t('对话'), MessageSquare, null],
+            ['report', t('研究报告'), BookOpen, null],
+            ['sources', t('来源'), Link2, report?.sources.length ?? 0],
+            ['records', t('记录'), Clock3, runs.length],
           ] as const
         ).map(([key, label, Icon, count], index, tabs) => (
           <button
@@ -492,10 +515,10 @@ export function ResearchDetails() {
                 <div className="research-live">
                   <LoaderCircle size={19} className="spin" />
                   <div>
-                    <strong>{running.phase}</strong>
+                    <strong>{runtimeLabel(running.phase)}</strong>
                     {import.meta.env.DEV && (
                       <button onClick={() => changeTab('records')}>
-                        查看本次上下文 <ArrowUpRight size={12} />
+                        {t('查看本次上下文')} <ArrowUpRight size={12} />
                       </button>
                     )}
                   </div>
@@ -506,22 +529,27 @@ export function ResearchDetails() {
               {!report ? (
                 <>
                   {questionContext}
-                  <EmptyState title="暂无报告">在对话中让 AI 整理研究成果。</EmptyState>
+                  <EmptyState title={t('暂无报告')}>{t('在对话中让 AI 整理研究成果。')}</EmptyState>
                   {node.summary && <div className="notice neutral-notice">{node.summary}</div>}
                 </>
               ) : (
                 <>
                   <div className="report-version">
                     <span className="origin-tag">
-                      {report.origin === 'import' ? '导入的研究资料' : 'AI 研究报告'}
+                      {report.origin === 'import' ? t('导入的研究资料') : t('AI 研究报告')}
                     </span>
                     <div className="report-actions">
                       <div className="history-menu">
-                        <button onClick={() => setHistory(!history)} aria-label="选择报告历史版本">
+                        <button
+                          onClick={() => setHistory(!history)}
+                          aria-label={t('选择报告历史版本')}
+                        >
                           <Clock3 size={12} />
                           {report.id === reports[0].id
-                            ? '最新版本'
-                            : `历史版本 ${reports.length - reports.findIndex((r) => r.id === report.id)}`}
+                            ? t('最新版本')
+                            : t('历史版本 {{val}}', {
+                                val: reports.length - reports.findIndex((r) => r.id === report.id),
+                              })}
                           <ChevronDown size={12} />
                         </button>
                         {history && (
@@ -536,10 +564,12 @@ export function ResearchDetails() {
                                 }}
                               >
                                 <span>
-                                  {i === 0 ? '最新报告' : `历史报告 ${reports.length - i}`}
+                                  {i === 0
+                                    ? t('最新报告')
+                                    : t('历史报告 {{val}}', { val: reports.length - i })}
                                 </span>
                                 <strong>{r.title}</strong>
-                                <small>{new Date(r.createdAt).toLocaleString('zh-CN')}</small>
+                                <small>{new Date(r.createdAt).toLocaleString(uiLocale())}</small>
                                 {r.id === report.id && <Check size={13} />}
                               </button>
                             ))}
@@ -548,8 +578,8 @@ export function ResearchDetails() {
                       </div>
                       <button
                         className="icon-button"
-                        title="复制报告 Markdown"
-                        aria-label="复制报告"
+                        title={t('复制报告 Markdown')}
+                        aria-label={t('复制报告')}
                         onClick={() => {
                           void navigator.clipboard.writeText(report.markdown).then(() => {
                             setCopied(true)
@@ -576,13 +606,13 @@ export function ResearchDetails() {
                     >
                       <summary>
                         <Sparkles size={13} />
-                        概览
+                        {t('概览')}
                         <ChevronDown size={11} className="disclosure-marker" />
                       </summary>
                       <section className="insight-box">
                         <div className="section-label">
                           <Sparkles size={14} />
-                          阶段认识
+                          {t('阶段认识')}
                         </div>
                         <p>{report.summary}</p>
                       </section>
@@ -590,7 +620,7 @@ export function ResearchDetails() {
                         <section className="open-questions">
                           <div className="section-label">
                             <CircleHelp size={14} />
-                            尚待弄清
+                            {t('尚待弄清')}
                           </div>
                           <ul>
                             {report.openQuestions.map((q, i) => (
@@ -603,10 +633,11 @@ export function ResearchDetails() {
                     <details className="report-toc">
                       <summary>
                         <ListChecks size={13} />
-                        目录 <span>{reportHeadings(report.markdown).length}</span>
+                        {t('目录', { context: 'report', defaultValue: '目录' })}
+                        <span>{reportHeadings(report.markdown).length}</span>
                         <ChevronDown size={11} className="disclosure-marker" />
                       </summary>
-                      <nav aria-label="报告目录">
+                      <nav aria-label={t('报告目录')}>
                         {reportHeadings(report.markdown).map((heading) => (
                           <button
                             key={heading.line}
@@ -631,7 +662,7 @@ export function ResearchDetails() {
                   <div className="report-credit">
                     <FileText size={12} />
                     <span>
-                      {report.model} · {new Date(report.createdAt).toLocaleDateString('zh-CN')}
+                      {report.model} · {new Date(report.createdAt).toLocaleDateString(uiLocale())}
                     </span>
                   </div>
                 </>
@@ -640,7 +671,7 @@ export function ResearchDetails() {
                 <section className="related-research">
                   <div className="section-label">
                     <Link2 size={14} />
-                    相关研究
+                    {t('相关研究')}
                   </div>
                   {node.relatedIds.map((id) => {
                     const related = snapshot.nodes.find((n) => n.id === id)
@@ -686,7 +717,7 @@ export function ResearchDetails() {
                   </div>
                 ))
               ) : (
-                <EmptyState title="暂无外部来源">此报告未引用外部资料。</EmptyState>
+                <EmptyState title={t('暂无外部来源')}>{t('此报告未引用外部资料。')}</EmptyState>
               )}
             </>
           )}
@@ -703,7 +734,7 @@ export function ResearchDetails() {
               {runs.length
                 ? runs.map((run) => <RunRecord run={run} key={run.id} />)
                 : !reports.some((r) => r.origin === 'import') && (
-                    <EmptyState title="暂无研究记录">本节点尚未调用模型。</EmptyState>
+                    <EmptyState title={t('暂无研究记录')}>{t('本节点尚未调用模型。')}</EmptyState>
                   )}
               {reports
                 .filter((r) => r.origin === 'import')
@@ -711,9 +742,9 @@ export function ResearchDetails() {
                   <div className="import-record" key={r.id}>
                     <FileText size={15} />
                     <div>
-                      <strong>导入的研究资料</strong>
+                      <strong>{t('导入的研究资料')}</strong>
                       <p>{r.title}</p>
-                      <small>{new Date(r.createdAt).toLocaleDateString('zh-CN')}</small>
+                      <small>{new Date(r.createdAt).toLocaleDateString(uiLocale())}</small>
                     </div>
                   </div>
                 ))}
@@ -721,15 +752,15 @@ export function ResearchDetails() {
           )}
         </div>
       </div>
-      <div className="research-composer" role="region" aria-label="研究输入">
+      <div className="research-composer" role="region" aria-label={t('研究输入')}>
         <textarea
           ref={input}
           value={draft}
           onChange={(event) =>
             setView({ chatDrafts: { ...view.chatDrafts, [node.id]: event.target.value } })
           }
-          placeholder="在这条分支上，你想聊些什么？"
-          aria-label="节点对话输入"
+          placeholder={t('在这条分支上，你想聊些什么？')}
+          aria-label={t('节点对话输入')}
           maxLength={12000}
           onCompositionStart={() => {
             composing.current = true
@@ -756,14 +787,14 @@ export function ResearchDetails() {
           {running && (
             <span className="composer-progress" role="status">
               <LoaderCircle className="spin" size={13} />
-              <span>{running.phase}</span>
+              <span>{runtimeLabel(running.phase)}</span>
             </span>
           )}
           {running ? (
             <Button
               className="composer-send"
-              aria-label="停止回复"
-              title="停止回复"
+              aria-label={t('停止回复')}
+              title={t('停止回复')}
               onClick={() =>
                 void command({ type: 'cancel-research', runId: running.id }).catch(() => {})
               }
@@ -774,9 +805,9 @@ export function ResearchDetails() {
             <Button
               variant="primary"
               className="composer-send"
-              aria-label="发送消息"
+              aria-label={t('发送消息')}
               aria-keyshortcuts={sendShortcut === 'enter' ? 'Enter' : 'Control+Enter Meta+Enter'}
-              title={`发送消息（${sendShortcutLabel(sendShortcut)}）`}
+              title={t('发送消息（{{val}}）', { val: sendShortcutLabel(sendShortcut) })}
               onClick={() => void start()}
               disabled={!draft.trim() || selectionBusy}
             >

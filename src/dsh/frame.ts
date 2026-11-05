@@ -1,6 +1,7 @@
 import type { ResearchClient, Snapshot } from '../research/types'
-import type { DshCall } from './contracts'
+import type { DshClientCall } from './contracts'
 import { version } from '../../config/dsh-package.json'
+import { t } from '../i18n'
 
 declare global {
   interface Window {
@@ -19,12 +20,12 @@ const pending = new Map<
     timer: ReturnType<typeof setTimeout>
   }
 >()
-const send = <T>(request: DshCall): Promise<T> =>
+const send = <T>(request: DshClientCall): Promise<T> =>
   new Promise((resolve, reject) => {
     const id = ++serial
     const timer = setTimeout(() => {
       pending.delete(id)
-      reject(new Error('DSH 宿主暂未响应，请返回研究页面重试'))
+      reject(new Error(t('DSH 宿主暂未响应，请返回研究页面重试')))
     }, 90000)
     pending.set(id, { resolve: (value) => resolve(value as T), reject, timer })
     parent.postMessage({ kind: 'qb-dsh-call', channel, id, request }, targetOrigin)
@@ -35,12 +36,13 @@ function snapshot(sinceVersion?: number): Promise<Snapshot | null> {
   return send({ method: 'snapshot', sinceVersion })
 }
 const unavailable = async (): Promise<never> => {
-  throw new Error('账号、工具和运行配置在 DSH 中管理')
+  throw new Error(t('账号、工具和运行配置在 DSH 中管理'))
 }
 const client: ResearchClient = {
   host: {
     name: 'DeepSeek Harness',
     version,
+    managePlugin: () => send({ method: 'manage-plugin' }),
     models: (nodeId) => send({ method: 'models', nodeId }),
     selectModel: async (nodeId, selection) => {
       await send({ method: 'select-model', nodeId, selection })
@@ -79,7 +81,7 @@ window.addEventListener('message', (event) => {
 window.addEventListener('pagehide', () => {
   for (const call of pending.values()) {
     clearTimeout(call.timer)
-    call.reject(new Error('研究页面已关闭'))
+    call.reject(new Error(t('研究页面已关闭')))
   }
   pending.clear()
 })

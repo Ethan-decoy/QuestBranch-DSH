@@ -13,8 +13,9 @@ import {
 import { useApp } from './state'
 import { graphPresentation, visibleResearchRows } from './research-view'
 import { ancestorPath } from '../research/context'
-import { branchPrerequisite, branchReport } from '../research/branching'
+import { branchReport } from '../research/branching'
 import { mindmapBranchSides, mindmapSidePreferences } from './layout'
+import { useTranslation } from 'react-i18next'
 
 export function toggleBranch(id: string) {
   const state = useApp.getState(),
@@ -31,19 +32,20 @@ export function toggleBranch(id: string) {
 }
 
 function NodeActions() {
+  const { t } = useTranslation()
   const state = useApp(),
     view = state.view!,
     node = state.snapshot!.nodes.find((node) => node.id === view.selectedId)!,
     focused = graphPresentation(view).focusId
   return (
     <>
-      <div className="graph-tool-group" role="group" aria-label="分支编辑">
+      <div className="graph-tool-group" role="group" aria-label={t('分支编辑')}>
         <button
-          aria-label="为当前研究添加方向"
+          aria-label={t('为当前研究添加方向')}
           title={
             branchReport(state.snapshot!, node.id, view)
-              ? '添加子方向 (Ctrl+Enter)'
-              : branchPrerequisite
+              ? t('添加子方向 (Ctrl+Enter)')
+              : t('先生成研究报告')
           }
           disabled={!branchReport(state.snapshot!, node.id, view)}
           onClick={() => state.open('node', { returnToGraph: true })}
@@ -51,13 +53,13 @@ function NodeActions() {
           <Plus size={16} />
         </button>
         <button
-          aria-label="添加同级方向"
+          aria-label={t('添加同级方向')}
           title={
             !node.parentId
-              ? '根问题没有同级方向'
+              ? t('根问题没有同级方向')
               : branchReport(state.snapshot!, node.parentId, view)
-                ? '添加同级方向 (Shift+Enter)'
-                : branchPrerequisite
+                ? t('添加同级方向 (Shift+Enter)')
+                : t('先生成研究报告')
           }
           disabled={!branchReport(state.snapshot!, node.parentId, view)}
           onClick={() => state.open('sibling', { returnToGraph: true })}
@@ -65,15 +67,19 @@ function NodeActions() {
           <GitFork size={15} />
         </button>
       </div>
-      <div className="graph-tool-group" role="group" aria-label="节点详情">
-        <button aria-label="编辑当前研究" title="编辑问题 (F2)" onClick={() => state.open('edit')}>
+      <div className="graph-tool-group" role="group" aria-label={t('节点详情')}>
+        <button
+          aria-label={t('编辑当前研究')}
+          title={t('编辑问题 (F2)')}
+          onClick={() => state.open('edit')}
+        >
           <Pencil size={14} />
         </button>
       </div>
-      <div className="graph-tool-group" role="group" aria-label="分支浏览">
+      <div className="graph-tool-group" role="group" aria-label={t('分支浏览')}>
         <button
-          aria-label="聚焦当前分支"
-          title="只显示当前分支"
+          aria-label={t('聚焦当前分支')}
+          title={t('只显示当前分支')}
           disabled={!node.parentId || focused === node.id}
           onClick={() => state.navigateGraph({ type: 'focus', nodeId: node.id })}
         >
@@ -85,37 +91,39 @@ function NodeActions() {
 }
 
 export function BranchTrail() {
+  const { t } = useTranslation()
   const state = useApp(),
     view = state.view!,
     { focusId } = graphPresentation(view),
     path = focusId ? ancestorPath(state.snapshot!.nodes, focusId) : []
   if (!focusId && !view.graph?.history?.length) return null
   return (
-    <nav className="branch-trail" aria-label="分支聚焦路径">
+    <nav className="branch-trail" aria-label={t('分支聚焦路径')}>
       <button
-        aria-label="返回上一视图"
-        title="返回上一视图 (Esc)"
+        aria-label={t('返回上一视图')}
+        title={t('返回上一视图 (Esc)')}
         onClick={() => state.navigateGraph({ type: 'back' })}
       >
         <ArrowLeft size={15} />
       </button>
       {focusId && (
         <button
-          aria-label="返回全图"
-          title="返回全图"
+          aria-label={t('返回全图')}
+          title={t('返回全图')}
           onClick={() => state.navigateGraph({ type: 'global' })}
         >
           <Scan size={15} />
         </button>
       )}
       <span title={path.map((node) => node.title).join(' / ')}>
-        {focusId ? path.map((node) => node.title).join(' / ') : '全图'}
+        {focusId ? path.map((node) => node.title).join(' / ') : t('全图')}
       </span>
     </nav>
   )
 }
 
 export function GraphDock({ children }: { children?: ReactNode }) {
+  const { t } = useTranslation()
   const state = useApp(),
     view = state.view!,
     { mode, detail } = graphPresentation(view),
@@ -134,13 +142,13 @@ export function GraphDock({ children }: { children?: ReactNode }) {
     return () => observer.disconnect()
   }, [])
   return (
-    <div ref={dock} className="graph-tools" role="group" aria-label="图谱工具">
+    <div ref={dock} className="graph-tools" role="group" aria-label={t('图谱工具')}>
       <div className="graph-view-tools">
-        <div className="graph-tool-group graph-layouts" role="group" aria-label="结构展示">
+        <div className="graph-tool-group graph-layouts" role="group" aria-label={t('结构展示')}>
           {(
             [
-              ['horizontal', '横向图', Columns3],
-              ['mindmap', '中心导图', Network],
+              ['horizontal', t('横向图'), Columns3],
+              ['mindmap', t('中心导图'), Network],
             ] as const
           ).map(([value, label, Icon]) => (
             <button
@@ -154,10 +162,10 @@ export function GraphDock({ children }: { children?: ReactNode }) {
             </button>
           ))}
         </div>
-        <div className="graph-tool-group" role="group" aria-label="节点显示">
+        <div className="graph-tool-group" role="group" aria-label={t('节点显示')}>
           <button
-            aria-label="显示阶段摘要"
-            title={detail === 'summary' ? '切换为简洁节点' : '显示阶段摘要'}
+            aria-label={t('显示阶段摘要')}
+            title={detail === 'summary' ? t('切换为简洁节点') : t('显示阶段摘要')}
             aria-pressed={detail === 'summary'}
             onClick={() =>
               state.navigateGraph({

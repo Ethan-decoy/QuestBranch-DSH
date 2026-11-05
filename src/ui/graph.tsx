@@ -7,8 +7,10 @@ import { graphPresentation, transitionView } from './research-view'
 import { BranchTrail, GraphDock } from './graph-navigation'
 import { RelatedResearch } from './related-research'
 import { GraphContent, type ResearchFlowNode as FlowNode } from './graph-canvas'
+import { useTranslation } from 'react-i18next'
 
 function GraphCanvasControls() {
+  const { t } = useTranslation()
   const flow = useReactFlow<FlowNode>(),
     { zoom } = useViewport(),
     view = useApp((state) => state.view)!,
@@ -29,26 +31,26 @@ function GraphCanvasControls() {
       )
   }
   return (
-    <div className="canvas-controls" role="group" aria-label="画布操作">
+    <div className="canvas-controls" role="group" aria-label={t('画布操作')}>
       <button
-        title="缩小"
-        aria-label="缩小画布"
+        title={t('缩小')}
+        aria-label={t('缩小画布')}
         onClick={() => void flow.zoomOut({ duration: 150 })}
       >
         <Minus size={16} />
       </button>
       <span>{Math.round(zoom * 100)}%</span>
       <button
-        title="放大"
-        aria-label="放大画布"
+        title={t('放大')}
+        aria-label={t('放大画布')}
         onClick={() => void flow.zoomIn({ duration: 150 })}
       >
         <Plus size={16} />
       </button>
       <i />
       <button
-        title="查看全图"
-        aria-label="查看全图"
+        title={t('查看全图')}
+        aria-label={t('查看全图')}
         onClick={() => {
           if (zoom >= 0.6) setPrevious({ sceneKey, viewport: flow.getViewport() })
           void flow.fitView({
@@ -62,12 +64,12 @@ function GraphCanvasControls() {
       >
         <Scan size={16} />
       </button>
-      <button title="定位当前研究" aria-label="定位当前研究" onClick={() => focusNode()}>
+      <button title={t('定位当前研究')} aria-label={t('定位当前研究')} onClick={() => focusNode()}>
         <Focus size={16} />
       </button>
       <button
-        title="返回上次视角"
-        aria-label="返回上次视角"
+        title={t('返回上次视角')}
+        aria-label={t('返回上次视角')}
         disabled={!previousViewport}
         onClick={() => {
           if (previousViewport) void flow.setViewport(previousViewport, { duration: 250 })
@@ -76,8 +78,8 @@ function GraphCanvasControls() {
         <CornerDownRight size={16} />
       </button>
       <button
-        title="恢复自动布局"
-        aria-label="恢复自动布局"
+        title={t('恢复自动布局')}
+        aria-label={t('恢复自动布局')}
         onClick={() => {
           const state = useApp.getState(),
             current = state.view!,

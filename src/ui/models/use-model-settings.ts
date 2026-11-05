@@ -1,3 +1,4 @@
+import { t } from '../../i18n'
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import { useApp } from '../state'
@@ -6,6 +7,7 @@ import { connectionKey } from '../provider-connection'
 import { resolveModelSelection } from '../../research/model-catalog'
 import { apiProtocol, modelProviderId, sessionStrategy } from '../../research/api-services'
 import type { AuthSession, ModelProvider, SettingsInput } from '../../research/types'
+import i18next from '../../i18n'
 
 function preferences(settings: SettingsInput) {
   return JSON.stringify([
@@ -99,7 +101,8 @@ export function useModelSettings({ setError }: { setError(message: string): void
     try {
       resolveModelSelection(form, catalog)
     } catch (error) {
-      selectionError = error instanceof Error ? error.message : '请选择有效的模型与思考强度'
+      selectionError =
+        error instanceof Error ? error.message : i18next.t('请选择有效的模型与思考强度')
     }
   }
   const update = (patch: Partial<SettingsInput>) => {
@@ -173,7 +176,7 @@ export function useModelSettings({ setError }: { setError(message: string): void
           setSession({
             ...sessionRef.current!,
             status: 'failed',
-            message: error instanceof Error ? error.message : '无法读取连接状态',
+            message: error instanceof Error ? error.message : i18next.t('无法读取连接状态'),
           })
           void client.auth.cancel(session.id).catch(() => {})
         }
@@ -250,7 +253,7 @@ export function useModelSettings({ setError }: { setError(message: string): void
       await applyAuthState(started, revision)
     } catch (error) {
       if (isCurrentAuth(revision)) {
-        const message = error instanceof Error ? error.message : '连接未完成'
+        const message = error instanceof Error ? error.message : i18next.t('连接未完成')
         if (previous) setSession({ ...previous, status: 'failed', message })
         else setError(message)
       }
@@ -271,7 +274,7 @@ export function useModelSettings({ setError }: { setError(message: string): void
       await applyAuthState(state, revision)
     } catch (error) {
       if (isCurrentAuth(revision))
-        setError(error instanceof Error ? error.message : '登录信息未提交')
+        setError(error instanceof Error ? error.message : t('登录信息未提交'))
     } finally {
       finishAuth(revision)
     }
@@ -288,14 +291,14 @@ export function useModelSettings({ setError }: { setError(message: string): void
           id: current.id,
           provider: current.provider,
           status: 'cancelled',
-          message: '已取消连接',
+          message: i18next.t('已取消连接'),
         })
     } catch (error) {
       if (isCurrentAuth(revision))
         setSession({
           ...current,
           status: 'failed',
-          message: error instanceof Error ? error.message : '取消连接失败',
+          message: error instanceof Error ? error.message : i18next.t('取消连接失败'),
         })
     } finally {
       finishAuth(revision)
@@ -312,7 +315,7 @@ export function useModelSettings({ setError }: { setError(message: string): void
       await providerConnection.getState().connect(form)
       await refresh()
     } catch (error) {
-      if (isCurrentAuth(revision)) setError(error instanceof Error ? error.message : '退出失败')
+      if (isCurrentAuth(revision)) setError(error instanceof Error ? error.message : t('退出失败'))
     } finally {
       finishAuth(revision)
     }
@@ -336,7 +339,7 @@ export function useModelSettings({ setError }: { setError(message: string): void
       open(null)
       return true
     } catch (error) {
-      setError(error instanceof Error ? error.message : '保存失败')
+      setError(error instanceof Error ? error.message : t('保存失败'))
       return false
     } finally {
       setSaving(false)

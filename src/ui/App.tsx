@@ -17,7 +17,7 @@ import {
   PanelLeftOpen,
   X,
 } from 'lucide-react'
-import { useApp, download, flushView } from './state'
+import { useApp, download, flushView, flushViewNow } from './state'
 import { branchPrerequisite, branchReport } from '../research/branching'
 import { client } from './client'
 import { Button, Logo, SignalIcon, StatusLabel, nodeStatus } from './components'
@@ -29,8 +29,11 @@ import { useTheme } from './theme'
 import { displayBranchColor } from './theme-colors'
 import { PanelResizer } from './panel-resizer'
 import { resizeWorkbenchPane, workbenchLayout, type WorkbenchPane } from './workbench-layout'
+import { useTranslation } from 'react-i18next'
+import { runtimeLabel } from './i18n-labels'
 
 export function App() {
+  const { t } = useTranslation()
   const theme = useTheme((state) => state.theme)
   const snapshot = useApp((s) => s.snapshot),
     workspaceId = useApp((s) => s.workspaceId),
@@ -135,7 +138,7 @@ export function App() {
       <div className="loading-screen">
         <Logo />
         <LoaderCircle size={22} className="spin" />
-        <p>{error || '正在打开你的研究空间…'}</p>
+        <p>{error || t('正在打开你的研究空间…')}</p>
       </div>
     )
   const workspace = snapshot.workspaces.find((w) => w.id === workspaceId)!,
@@ -153,22 +156,32 @@ export function App() {
         `${workspace.name.replace(/[<>:"/\\|?*]/g, '-')}.questbranch.json`,
       )
     } catch (error) {
-      useApp.getState().setError(error instanceof Error ? error.message : '导出失败')
+      useApp.getState().setError(error instanceof Error ? error.message : t('导出失败'))
     } finally {
       setExporting(false)
+    }
+  }
+  async function managePlugin() {
+    try {
+      await flushViewNow()
+      await client.host?.managePlugin()
+    } catch (error) {
+      useApp
+        .getState()
+        .setError(error instanceof Error ? error.message : t('无法打开 DSH 插件管理'))
     }
   }
   async function importData(file: File) {
     try {
       if (file.size > 64 * 1024 * 1024)
-        throw new Error('导入文件超过 64 MB，请拆分研究空间或保留原数据库作为备份。')
+        throw new Error(t('导入文件超过 64 MB，请拆分研究空间或保留原数据库作为备份。'))
       const data = JSON.parse(await file.text()),
         result = await useApp.getState().command({ type: 'import-workspace', data })
       changeWorkspace(result.id!)
     } catch (error) {
       useApp
         .getState()
-        .setError(error instanceof Error ? error.message : '导入失败，请检查文件格式')
+        .setError(error instanceof Error ? error.message : t('导入失败，请检查文件格式'))
     }
   }
   return (
@@ -185,7 +198,7 @@ export function App() {
         id="workspace-navigation"
         className="sidebar"
         hidden={sidebarHidden}
-        aria-label="工作空间导航"
+        aria-label={t('工作空间导航')}
         onKeyDown={(event) => {
           if (compact && navigationOpen && event.key === 'Escape') {
             event.preventDefault()
@@ -198,8 +211,8 @@ export function App() {
           <button
             ref={closeNavigation}
             className="icon-button close-navigation compact-only"
-            aria-label="返回工作台"
-            title="返回工作台"
+            aria-label={t('返回工作台')}
+            title={t('返回工作台')}
             onClick={closeNav}
           >
             <X size={18} />
@@ -209,18 +222,19 @@ export function App() {
           <div className="sidebar-section">
             <div className="sidebar-label">
               <span>
-                研究空间 <span className="workspace-total">{snapshot.workspaces.length}</span>
+                {t('研究空间')}{' '}
+                <span className="workspace-total">{snapshot.workspaces.length}</span>
               </span>
               <button
                 className="icon-button"
-                aria-label="新建研究空间"
-                title="新建研究空间"
+                aria-label={t('新建研究空间')}
+                title={t('新建研究空间')}
                 onClick={() => open('workspace')}
               >
                 <Plus size={15} />
               </button>
             </div>
-            <nav aria-label="研究空间">
+            <nav aria-label={t('研究空间')}>
               {snapshot.workspaces.map((w) => (
                 <button
                   className={`workspace-item ${w.id === workspaceId ? 'active' : ''}`}
@@ -236,7 +250,7 @@ export function App() {
                     <GitBranch size={16} />
                   </span>
                   <strong>{w.name}</strong>
-                  <span className="workspace-node-count" title="研究节点数">
+                  <span className="workspace-node-count" title={t('研究节点数')}>
                     {snapshot.nodes.filter((n) => n.workspaceId === w.id && !n.removedAt).length}
                   </span>
                 </button>
@@ -245,11 +259,11 @@ export function App() {
           </div>
           <div className="sidebar-section directions">
             <div className="sidebar-label">
-              研究分支
+              {t('研究分支')}
               <button
                 className="icon-button"
-                title="回到根问题"
-                aria-label="回到根问题"
+                title={t('回到根问题')}
+                aria-label={t('回到根问题')}
                 onClick={() => navigate(root.id)}
               >
                 <Layers3 size={13} />
@@ -263,7 +277,7 @@ export function App() {
               <span className="tree-root-dot" />
               <span>{root.title}</span>
             </button>
-            <nav className="branch-nav" aria-label="研究分支">
+            <nav className="branch-nav" aria-label={t('研究分支')}>
               {branches.map((branch) => (
                 <button
                   key={branch.id}
@@ -275,8 +289,9 @@ export function App() {
                   <i style={{ background: displayBranchColor(branch.color, theme) }} />
                   <span className="branch-title">{branch.title}</span>
                   {(freshCounts.get(branch.id) ?? 0) > 0 && (
-                    <span className="graph-new-badge" title="新增方向尚未查看">
-                      新 {freshCounts.get(branch.id)}
+                    <span className="graph-new-badge" title={t('新增方向尚未查看')}>
+                      {t('新')}
+                      {freshCounts.get(branch.id)}
                     </span>
                   )}
                   <StatusLabel status={nodeStatus(branch, snapshot)} compact />
@@ -288,38 +303,51 @@ export function App() {
         <div className="sidebar-bottom">
           <button
             className="icon-button"
-            aria-label="模型与连接"
-            title="模型与连接"
+            aria-label={t('模型与连接')}
+            title={t('模型与连接')}
             onClick={() => open('models')}
           >
             <Sparkles size={16} />
           </button>
           <button
             className="icon-button"
-            aria-label="设置"
-            title="设置 (Ctrl+,)"
+            aria-label={t('设置')}
+            title={t('设置 (Ctrl+,)')}
             onClick={() => open('settings')}
           >
             <Settings size={16} />
           </button>
           <button
             className="icon-button"
-            aria-label="导入研究资料"
-            title="导入研究资料"
+            aria-label={t('导入研究资料')}
+            title={t('导入研究资料')}
             onClick={() => fileInput.current?.click()}
           >
             <ArrowUpFromLine size={15} />
           </button>
-          <span
-            className="local-label"
-            title={`本地存储 · QuestBranch ${client.host?.version ?? version}`}
-          >
-            v{client.host?.version ?? version}
-          </span>
+          {client.host ? (
+            <button
+              className="local-label host-version"
+              aria-label={t('在 DSH 中管理 QuestBranch 插件')}
+              title={t('QuestBranch {{version}} · DSH 插件管理', {
+                version: client.host.version,
+              })}
+              onClick={() => void managePlugin()}
+            >
+              v{client.host.version}
+            </button>
+          ) : (
+            <span
+              className="local-label"
+              title={t('本地存储 · QuestBranch {{version}}', { version })}
+            >
+              v{version}
+            </span>
+          )}
         </div>
       </aside>
       <PanelResizer
-        label="导航区域宽度"
+        label={t('导航区域宽度')}
         width={layout.navigation}
         {...layout.limits.navigation}
         hidden={sidebarHidden || compact}
@@ -331,9 +359,13 @@ export function App() {
             ref={menuButton}
             className="icon-button navigation-toggle"
             aria-label={
-              compact ? '打开工作空间导航' : sidebarHidden ? '展开工作空间导航' : '收起工作空间导航'
+              compact
+                ? t('打开工作空间导航')
+                : sidebarHidden
+                  ? t('展开工作空间导航')
+                  : t('收起工作空间导航')
             }
-            title={compact ? '打开导航' : sidebarHidden ? '展开导航' : '收起导航'}
+            title={compact ? t('打开导航') : sidebarHidden ? t('展开导航') : t('收起导航')}
             aria-controls="workspace-navigation"
             aria-expanded={!sidebarHidden}
             onClick={() => {
@@ -354,63 +386,68 @@ export function App() {
           {sidebarHidden && <Logo small />}
           <div className="workspace-breadcrumb">
             <strong title={workspace.name}>{workspace.name}</strong>
+            {/* i18next-instrument-ignore: independent node and unexplored counters */}
             <span className="workspace-count">
-              {nodes.length} 节点 <span>·</span> {pending} 待研究
+              {t('{{count}} 个节点', { count: nodes.length })}
+              <span>·</span>
+              {t('{{count}} 个待研究', { count: pending })}
             </span>
           </div>
-          <div className="view-tabs compact-only" aria-label="工作区域">
+          <div className="view-tabs compact-only" aria-label={t('工作区域')}>
             <button
               className={pane === 'map' ? 'active' : ''}
-              aria-label="研究图谱"
+              aria-label={t('研究图谱')}
               aria-pressed={pane === 'map'}
               onClick={() => showPane('map')}
             >
               <GitBranch size={15} />
-              图谱
+              {t('图谱')}
             </button>
             <button
               className={pane === 'detail' ? 'active' : ''}
-              aria-label="研究详情"
+              aria-label={t('研究详情')}
               aria-pressed={pane === 'detail'}
               onClick={() => showPane('detail')}
             >
               <BookOpen size={15} />
-              详情
+              {t('详情')}
             </button>
           </div>
           <div className="topbar-actions">
             <button
               className="icon-button search-button"
               onClick={() => open('search')}
-              aria-label="搜索研究"
-              title="搜索研究 · Ctrl K"
+              aria-label={t('搜索研究')}
+              title={t('搜索研究 · Ctrl K')}
             >
               <Search size={15} />
             </button>
             <Button
               variant="ghost"
-              aria-label="分支比较"
-              title="分支比较"
+              aria-label={t('分支比较')}
+              title={t('分支比较')}
               onClick={() => open('compare')}
             >
               <Columns2 size={14} />
-              <span className="action-label">比较</span>
+              <span className="action-label">{t('比较')}</span>
             </Button>
             <Button
-              aria-label="添加研究方向"
+              aria-label={t('添加研究方向')}
               title={
-                branchReport(snapshot, view.selectedId, view) ? '添加研究方向' : branchPrerequisite
+                branchReport(snapshot, view.selectedId, view)
+                  ? t('添加研究方向')
+                  : runtimeLabel(branchPrerequisite)
               }
               disabled={!branchReport(snapshot, view.selectedId, view)}
               onClick={() => open('node')}
             >
               <Plus size={14} />
-              <span className="action-label">新方向</span>
+              <span className="action-label">{t('新方向')}</span>
             </Button>
             <button
               className="icon-button"
-              title="导出当前研究空间"
-              aria-label="导出研究空间"
+              title={t('导出当前研究空间')}
+              aria-label={t('导出研究空间')}
               onClick={() => void exportData()}
               disabled={exporting}
             >
@@ -429,7 +466,7 @@ export function App() {
             <ResearchGraph />
           </div>
           <PanelResizer
-            label="报告区域宽度"
+            label={t('报告区域宽度')}
             width={layout.detail}
             {...layout.limits.detail}
             reversed
@@ -447,7 +484,7 @@ export function App() {
         ref={fileInput}
         accept=".json,application/json"
         hidden
-        aria-label="导入研究文件"
+        aria-label={t('导入研究文件')}
         onChange={(event) => {
           const file = event.target.files?.[0]
           if (file) void importData(file)
@@ -462,7 +499,7 @@ export function App() {
           </div>
           <button
             className="icon-button"
-            aria-label="关闭提示"
+            aria-label={t('关闭提示')}
             onClick={() => useApp.getState().setError('')}
           >
             <X size={15} />

@@ -498,6 +498,16 @@ button p {
   font-size: 10px;
   white-space: nowrap;
 }
+.sidebar-bottom > .host-version {
+  width: auto;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+.sidebar-bottom > .host-version:hover {
+  background: var(--color-surface-hover);
+}
 .save-dot {
   display: inline-block;
   width: 4px;

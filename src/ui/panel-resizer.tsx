@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Popover } from 'radix-ui'
 import { Button } from './components'
+import { useTranslation } from 'react-i18next'
 
 export function PanelResizer({
   label,
@@ -19,6 +20,7 @@ export function PanelResizer({
   hidden?: boolean
   onResize: (width: number) => void
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
   const [dragging, setDragging] = useState(false)
@@ -43,11 +45,11 @@ export function PanelResizer({
           hidden={hidden}
           role="separator"
           aria-orientation="vertical"
-          aria-label={`调整${label}`}
+          aria-label={t('调整{{label}}', { label })}
           aria-valuemin={Math.ceil(min)}
           aria-valuemax={Math.floor(max)}
           aria-valuenow={Math.round(width)}
-          aria-valuetext={`${Math.round(width)} 像素`}
+          aria-valuetext={t('{{val}} 像素', { val: Math.round(width) })}
           title={label}
           tabIndex={0}
           data-dragging={dragging || undefined}
@@ -111,7 +113,7 @@ export function PanelResizer({
             }}
           >
             <label>
-              {label}（px）
+              {t('{{label}}（px）', { label })}
               <input
                 type="number"
                 min={Math.ceil(min)}
@@ -121,7 +123,7 @@ export function PanelResizer({
                 onChange={(event) => setDraft(event.target.value)}
               />
             </label>
-            <Button type="submit">应用</Button>
+            <Button type="submit">{t('应用')}</Button>
           </form>
         </Popover.Content>
       </Popover.Portal>

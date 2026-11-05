@@ -1,3 +1,4 @@
+import { uiLocale } from '../i18n'
 import { useDeferredValue, useMemo, useState } from 'react'
 import { FileText, Link2, GitBranch, LoaderCircle, Search, Sparkles } from 'lucide-react'
 import { Modal, Button, Feedback, nodeStatus, StatusLabel } from './components'
@@ -9,12 +10,13 @@ import { client } from './client'
 import { useTheme } from './theme'
 import { displayBranchColor } from './theme-colors'
 import { searchResearch, type ResearchSearchHit } from './research-search'
-import { branchPrerequisite, branchReport } from '../research/branching'
+import { branchReport } from '../research/branching'
 import {
   comparisonDimensions,
   comparisonInstruction,
   defaultComparisonDimensions,
 } from '../research/comparison'
+import { useTranslation } from 'react-i18next'
 
 export function AppDialogs() {
   const dialog = useApp((s) => s.dialog)
@@ -28,6 +30,7 @@ export function AppDialogs() {
   return null
 }
 function QuestionDialog({ kind }: { kind: 'workspace' | 'node' | 'sibling' | 'edit' }) {
+  const { t } = useTranslation()
   const state = useApp(),
     node = state.snapshot!.nodes.find((n) => n.id === state.view!.selectedId)!,
     [question, setQuestion] = useState(kind === 'edit' ? node.question : ''),
@@ -86,7 +89,7 @@ function QuestionDialog({ kind }: { kind: 'workspace' | 'node' | 'sibling' | 'ed
       }
       state.open(null)
     } catch (error) {
-      setError(error instanceof Error ? error.message : '保存失败')
+      setError(error instanceof Error ? error.message : t('保存失败'))
     } finally {
       setSubmitting(false)
     }
@@ -95,46 +98,47 @@ function QuestionDialog({ kind }: { kind: 'workspace' | 'node' | 'sibling' | 'ed
     <Modal
       title={
         workspace
-          ? '新建研究空间'
+          ? t('新建研究空间')
           : kind === 'sibling'
-            ? '添加同级方向'
+            ? t('添加同级方向')
             : kind === 'node'
-              ? '添加研究方向'
-              : '编辑研究问题'
+              ? t('添加研究方向')
+              : t('编辑研究问题')
       }
-      description={kind === 'edit' ? '保留问题修订和已有报告。' : undefined}
+      description={kind === 'edit' ? t('保留问题修订和已有报告。') : undefined}
     >
       <form onSubmit={(event) => void submit(event)}>
         {!workspace && (
           <div className="parent-preview">
             <GitBranch size={16} />
             <div>
-              <span>{kind === 'edit' ? '当前研究' : '从这里展开'}</span>
+              <span>{kind === 'edit' ? t('当前研究') : t('从这里展开')}</span>
               <strong>{parent.title}</strong>
             </div>
           </div>
         )}
         {workspace && (
           <label className="field">
-            研究空间名称 <span>可选</span>
+            {t('研究空间名称')}
+            <span>{t('可选')}</span>
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="例如：探索下一代个人知识工具"
+              placeholder={t('例如：探索下一代个人知识工具')}
               maxLength={100}
             />
           </label>
         )}
         {creating && (
           <label className="field">
-            来源报告
+            {t('来源报告')}
             <select
-              aria-label="来源报告"
+              aria-label={t('来源报告')}
               value={sourceReportId}
               onChange={(event) => setSourceReportId(event.target.value)}
               disabled={submitting || !sourceReports.length}
             >
-              {!sourceReports.length && <option value="">{branchPrerequisite}</option>}
+              {!sourceReports.length && <option value="">{t('先生成研究报告')}</option>}
               {sourceReports.map((report, index) => (
                 <option key={report.id} value={report.id}>
                   v{index + 1} · {report.title}
@@ -144,14 +148,16 @@ function QuestionDialog({ kind }: { kind: 'workspace' | 'node' | 'sibling' | 'ed
           </label>
         )}
         <label className="field">
-          {workspace ? '根问题' : '研究问题'}
+          {workspace ? t('根问题') : t('研究问题')}
           <textarea
             autoFocus
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             rows={4}
             placeholder={
-              workspace ? '你希望通过这项研究弄清什么？' : '在这个方向上，你还想深入了解什么？'
+              workspace
+                ? t('你希望通过这项研究弄清什么？')
+                : t('在这个方向上，你还想深入了解什么？')
             }
             required
             maxLength={6000}
@@ -159,12 +165,13 @@ function QuestionDialog({ kind }: { kind: 'workspace' | 'node' | 'sibling' | 'ed
         </label>
         {workspace && (
           <label className="field">
-            研究约束 <span>可选</span>
+            {t('研究约束')}
+            <span>{t('可选')}</span>
             <textarea
               rows={2}
               value={constraints}
               onChange={(event) => setConstraints(event.target.value)}
-              placeholder="例如：面向个人使用，优先本地方案，关注维护成本"
+              placeholder={t('例如：面向个人使用，优先本地方案，关注维护成本')}
               maxLength={6000}
             />
           </label>
@@ -172,7 +179,7 @@ function QuestionDialog({ kind }: { kind: 'workspace' | 'node' | 'sibling' | 'ed
         {error && <Feedback tone="error">{error}</Feedback>}
         <div className="modal-footer">
           <Button type="button" variant="ghost" onClick={() => state.open(null)}>
-            取消
+            {t('取消')}
           </Button>
           <Button
             variant="primary"
@@ -180,7 +187,7 @@ function QuestionDialog({ kind }: { kind: 'workspace' | 'node' | 'sibling' | 'ed
             disabled={submitting || !question.trim() || (creating && !sourceReportId)}
           >
             {submitting ? <LoaderCircle size={14} className="spin" /> : <GitBranch size={14} />}{' '}
-            {workspace ? '创建研究空间' : creating ? '添加研究方向' : '保存问题'}
+            {workspace ? t('创建研究空间') : creating ? t('添加研究方向') : t('保存问题')}
           </Button>
         </div>
       </form>
@@ -188,6 +195,7 @@ function QuestionDialog({ kind }: { kind: 'workspace' | 'node' | 'sibling' | 'ed
   )
 }
 function SearchDialog() {
+  const { t } = useTranslation()
   const theme = useTheme((state) => state.theme)
   const [query, setQuery] = useState(''),
     snapshot = useApp((s) => s.snapshot)!,
@@ -201,24 +209,24 @@ function SearchDialog() {
       [snapshot, workspaceId, deferred, kind],
     )
   return (
-    <Modal title="搜索研究">
+    <Modal title={t('搜索研究')}>
       <div className="search-field">
         <Search size={18} />
         <input
           autoFocus
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="搜索研究、报告和来源…"
-          aria-label="搜索研究与材料"
+          placeholder={t('搜索研究、报告和来源…')}
+          aria-label={t('搜索研究与材料')}
         />
       </div>
-      <div className="search-filters" role="group" aria-label="搜索范围">
+      <div className="search-filters" role="group" aria-label={t('搜索范围')}>
         {(
           [
-            ['all', '全部'],
-            ['node', '研究'],
-            ['report', '报告'],
-            ['source', '来源'],
+            ['all', t('全部')],
+            ['node', t('研究')],
+            ['report', t('报告')],
+            ['source', t('来源')],
           ] as const
         ).map(([value, label]) => (
           <button key={value} aria-pressed={kind === value} onClick={() => setKind(value)}>
@@ -261,13 +269,14 @@ function SearchDialog() {
           )
         })}
         {!hits.length && (
-          <p className="search-empty">{query ? '没有匹配结果' : '输入关键词搜索材料'}</p>
+          <p className="search-empty">{query ? t('没有匹配结果') : t('输入关键词搜索材料')}</p>
         )}
       </div>
     </Modal>
   )
 }
 function CompareDialog() {
+  const { t } = useTranslation()
   const state = useApp(),
     snapshot = state.snapshot!,
     workspace = snapshot.workspaces.find((w) => w.id === state.workspaceId)!,
@@ -279,7 +288,7 @@ function CompareDialog() {
   const [a, setA] = useState(latest[0]?.id ?? ''),
     [b, setB] = useState(latest[1]?.id ?? ''),
     [instruction, setInstruction] = useState(
-      '比较这两个方向的一致、冲突与互补之处，形成新的综合认识，并提出值得继续的问题。',
+      t('比较这两个方向的一致、冲突与互补之处，形成新的综合认识，并提出值得继续的问题。'),
     ),
     [dimensions, setDimensions] = useState(defaultComparisonDimensions.join('\n')),
     [created, setCreated] = useState<{ key: string; id: string } | null>(null),
@@ -309,7 +318,10 @@ function CompareDialog() {
               parentId: reports[0].nodeId,
               sourceReportId: reports[0].id,
               referenceReportIds: [a, b],
-              question: `综合研究：${reports[0].title}与${reports[1].title}`,
+              question: t('综合研究：{{title}}与{{title2}}', {
+                title: reports[0].title,
+                title2: reports[1].title,
+              }),
               relatedIds: [...new Set([reports[0].nodeId, reports[1].nodeId])],
             })
       setCreated({ key, id: result.id! })
@@ -322,16 +334,16 @@ function CompareDialog() {
       })
       state.open(null)
     } catch (error) {
-      setError(error instanceof Error ? error.message : '综合研究未启动')
+      setError(error instanceof Error ? error.message : t('综合研究未启动'))
     } finally {
       setWorking(false)
     }
   }
   return (
-    <Modal title="分支比较" wide>
+    <Modal title={t('分支比较')} wide>
       {latest.length < 2 ? (
         <div className="notice neutral-notice">
-          至少需要两个节点分别保存报告，才能进行分支比较。
+          {t('至少需要两个节点分别保存报告，才能进行分支比较。')}
         </div>
       ) : (
         <>
@@ -339,9 +351,9 @@ function CompareDialog() {
             {reports.map((report, i) => (
               <div className="compare-column" key={i}>
                 <label className="field">
-                  {i === 0 ? '研究方向 A' : '研究方向 B'}
+                  {i === 0 ? t('研究方向 A') : t('研究方向 B')}
                   <select
-                    aria-label={i === 0 ? '研究方向 A' : '研究方向 B'}
+                    aria-label={i === 0 ? t('研究方向 A') : t('研究方向 B')}
                     value={i === 0 ? a : b}
                     disabled={working}
                     onChange={(event) => (i === 0 ? setA : setB)(event.target.value)}
@@ -353,10 +365,13 @@ function CompareDialog() {
                           {available
                             .filter((report) => report.nodeId === node.id)
                             .map((report, version, versions) => (
+                              // i18next-instrument-ignore: report title and version metadata
                               <option key={report.id} value={report.id}>
-                                {node.title} · v{version + 1}
-                                {version === versions.length - 1 ? '（最新）' : ''} ·{' '}
-                                {new Date(report.createdAt).toLocaleDateString('zh-CN')}
+                                {node.title}
+                                {' · v'}
+                                {version + 1}
+                                {version === versions.length - 1 ? t('（最新）') : ''} ·{' '}
+                                {new Date(report.createdAt).toLocaleDateString(uiLocale())}
                               </option>
                             ))}
                         </optgroup>
@@ -370,18 +385,18 @@ function CompareDialog() {
                       {available
                         .filter((item) => item.nodeId === report.nodeId)
                         .findIndex((item) => item.id === report.id) + 1}{' '}
-                      · {new Date(report.createdAt).toLocaleString('zh-CN')} ·{' '}
-                      {report.sources.length} 份来源
+                      · {new Date(report.createdAt).toLocaleString(uiLocale())} ·{' '}
+                      {t('{{length}} 份来源', { length: report.sources.length })}
                     </small>
                     <h3>{report.title}</h3>
                     <p>{report.summary}</p>
-                    <div className="section-label">已有认识</div>
+                    <div className="section-label">{t('已有认识')}</div>
                     <ul>
                       {report.findings.map((finding, i) => (
                         <li key={i}>{finding}</li>
                       ))}
                     </ul>
-                    <div className="section-label">尚待弄清</div>
+                    <div className="section-label">{t('尚待弄清')}</div>
                     <ul>
                       {report.openQuestions.map((q, i) => (
                         <li key={i}>{q}</li>
@@ -394,24 +409,26 @@ function CompareDialog() {
           </div>
           <div className="comparison-config">
             <p className="compare-version">
-              结果归属：{nodes.find((node) => node.id === reports[0]?.nodeId)?.title} / 新综合
+              {t('结果归属：{{title}} / 新综合', {
+                title: nodes.find((node) => node.id === reports[0]?.nodeId)?.title ?? '',
+              })}
             </p>
             <label className="field">
-              共同比较维度
+              {t('共同比较维度')}
               <textarea
-                aria-label="共同比较维度"
+                aria-label={t('共同比较维度')}
                 rows={4}
                 value={dimensions}
                 disabled={working}
                 onChange={(event) => setDimensions(event.target.value)}
-                placeholder="每行一个维度"
+                placeholder={t('每行一个维度')}
                 maxLength={2000}
               />
             </label>
             <label className="field">
-              补充研究指令
+              {t('补充研究指令')}
               <textarea
-                aria-label="补充研究指令"
+                aria-label={t('补充研究指令')}
                 rows={4}
                 value={instruction}
                 disabled={working}
@@ -425,7 +442,7 @@ function CompareDialog() {
       {error && <Feedback tone="error">{error}</Feedback>}
       <div className="modal-footer">
         <Button variant="ghost" onClick={() => state.open(null)}>
-          关闭
+          {t('关闭')}
         </Button>
         {latest.length >= 2 && (
           <Button
@@ -439,8 +456,8 @@ function CompareDialog() {
                 ? snapshot.settings.agent
                 : snapshot.settings.model
             )
-              ? '开展综合研究'
-              : '先连接研究模型'}
+              ? t('开展综合研究')
+              : t('先连接研究模型')}
           </Button>
         )}
       </div>

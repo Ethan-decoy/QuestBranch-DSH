@@ -14,12 +14,16 @@ import { useId, type ReactNode, type ButtonHTMLAttributes } from 'react'
 import { clsx } from 'clsx'
 import { useApp } from './state'
 import type { ResearchStatus } from './research-status'
+import { useTranslation } from 'react-i18next'
+import { statusText } from './i18n-labels'
 export { nodeStatus } from './research-status'
 
 export function Logo({ small = false }: { small?: boolean }) {
+  const { t } = useTranslation()
   return (
-    <div className={clsx('brand', small && 'small')} role="img" aria-label="QuestBranch 问之">
+    <div className={clsx('brand', small && 'small')} role="img" aria-label={t('QuestBranch 问之')}>
       <span className="brand-mark" aria-hidden="true" />
+      {/* i18next-instrument-ignore-next-line: brand name */}
       {!small && <strong aria-hidden="true">QuestBranch</strong>}
     </div>
   )
@@ -51,6 +55,7 @@ export function Modal({
   locked?: boolean
   className?: string
 }) {
+  const { t } = useTranslation()
   const descriptionId = useId()
   return (
     <Primitive.Root
@@ -72,7 +77,7 @@ export function Modal({
                 <Primitive.Description id={descriptionId}>{description}</Primitive.Description>
               )}
             </div>
-            <Primitive.Close className="icon-button" aria-label="关闭对话框" disabled={locked}>
+            <Primitive.Close className="icon-button" aria-label={t('关闭对话框')} disabled={locked}>
               <X size={18} />
             </Primitive.Close>
           </div>
@@ -89,6 +94,8 @@ export function StatusLabel({
   status: ResearchStatus
   compact?: boolean
 }) {
+  useTranslation()
+  const label = statusText(status)
   const Icon =
     status.key === 'failed'
       ? null
@@ -102,7 +109,7 @@ export function StatusLabel({
   return (
     <span
       className={clsx('status', status.key, compact && 'status-compact')}
-      title={compact ? status.label : undefined}
+      title={compact ? label : undefined}
     >
       {Icon ? (
         <Icon
@@ -113,7 +120,7 @@ export function StatusLabel({
       ) : (
         <SignalIcon tone="error" size={16} />
       )}
-      <span className={compact ? 'sr-only' : undefined}>{status.label}</span>
+      <span className={compact ? 'sr-only' : undefined}>{label}</span>
     </span>
   )
 }

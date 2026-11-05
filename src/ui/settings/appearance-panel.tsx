@@ -3,8 +3,10 @@ import { RotateCcw } from 'lucide-react'
 import { Button } from '../components'
 import { useApp } from '../state'
 import { ThemeSwitcher, useTheme } from '../theme'
+import { useTranslation } from 'react-i18next'
 
 function ResetLayoutButton() {
+  const { t } = useTranslation()
   const resetLayout = useApp((s) => s.resetLayout)
   const theme = useTheme((s) => s.theme)
   const animations = useRef<Animation[]>([])
@@ -63,29 +65,30 @@ function ResetLayoutButton() {
         }}
       >
         <RotateCcw size={14} aria-hidden="true" />
-        恢复默认布局
+        {t('恢复默认布局')}
       </Button>
       <span className="sr-only" role="status">
-        {completed > 0 && <span key={completed}>已恢复默认布局</span>}
+        {completed > 0 && <span key={completed}>{t('已恢复默认布局')}</span>}
       </span>
     </>
   )
 }
 
 export function AppearancePanel() {
+  const { t } = useTranslation()
   return (
     <>
       {' '}
-      <h3 className="settings-section-title">视觉风格</h3>
+      <h3 className="settings-section-title">{t('视觉风格')}</h3>
       <div className="settings-preference-group">
         <div className="settings-preference-row">
-          <strong>模式</strong>
+          <strong>{t('模式')}</strong>
           <ThemeSwitcher />
         </div>
       </div>
       <div className="settings-preference-group">
         <div className="settings-preference-row">
-          <strong>主题</strong>
+          <strong>{t('主题')}</strong>
           <span className="appearance-current-theme">
             <span className="appearance-palette" aria-hidden="true">
               <i />
@@ -93,11 +96,11 @@ export function AppearancePanel() {
               <i />
               <i />
             </span>
-            问之
+            {t('问之')}
           </span>
         </div>
         <div className="settings-preference-row">
-          <strong>分栏布局</strong>
+          <strong>{t('分栏布局')}</strong>
           <ResetLayoutButton />
         </div>
       </div>

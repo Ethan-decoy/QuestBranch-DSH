@@ -320,6 +320,7 @@ export interface ResearchClient {
   host?: {
     name: string
     version: string
+    managePlugin(): Promise<void>
     models(nodeId: string): Promise<import('./agent').NativeModelState>
     selectModel(nodeId: string, selection: import('./agent').NativeModelSelection): Promise<void>
   }

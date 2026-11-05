@@ -1,6 +1,7 @@
 import { createStore } from 'zustand/vanilla'
 import type { ConnectionResult, ResearchClient, SettingsInput } from '../research/types'
 import { modelConnectionKey } from '../research/api-services'
+import i18next from '../i18n'
 
 // Only connection identity is retained, never keys. Model/effort overrides do not
 // change the account connection. Request revisions prevent stale replies winning.
@@ -45,7 +46,7 @@ export function createConnectionStore(connect: ResearchClient['testConnection'])
               error:
                 error instanceof Error
                   ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, '')
-                  : '连接失败',
+                  : i18next.t('连接失败'),
             })
         } finally {
           if (revision === requestRevision) pending = undefined

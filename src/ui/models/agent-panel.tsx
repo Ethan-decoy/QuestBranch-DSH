@@ -6,8 +6,10 @@ import { client } from '../client'
 import { AgentRequests } from '../agent-activity'
 import { Button, Feedback } from '../components'
 import { restoreAgentSelection } from './agent-selection'
+import { useTranslation } from 'react-i18next'
 
 export function AgentPanel() {
+  const { t } = useTranslation()
   const settings = useApp((state) => state.snapshot!.settings)
   const command = useApp((state) => state.command),
     open = useApp((state) => state.open)
@@ -39,7 +41,7 @@ export function AgentPanel() {
       } catch (error) {
         if (!disposed) {
           setConnection(null)
-          setError(error instanceof Error ? error.message : '连接已关闭')
+          setError(error instanceof Error ? error.message : t('连接已关闭'))
         }
         return
       }
@@ -66,7 +68,7 @@ export function AgentPanel() {
   }
   const connect = async () => {
     if (!client.agent) {
-      setError('当前客户端尚不支持 ACP')
+      setError(t('当前客户端尚不支持 ACP'))
       return
     }
     await disconnect()
@@ -79,7 +81,7 @@ export function AgentPanel() {
         config.kind === 'custom' &&
         (!Array.isArray(parsed) || parsed.some((arg) => typeof arg !== 'string'))
       )
-        throw new Error('启动参数应为 JSON 字符串数组')
+        throw new Error(t('启动参数应为 JSON 字符串数组'))
       let result = await client.agent.connect({ ...config, args: parsed as string[] | undefined })
       if (!mounted.current || revision.current !== version) {
         await client.agent.disconnect(result.id)
@@ -98,7 +100,7 @@ export function AgentPanel() {
       }))
     } catch (error) {
       if (mounted.current && revision.current === version)
-        setError(error instanceof Error ? error.message : '连接失败')
+        setError(error instanceof Error ? error.message : t('连接失败'))
     } finally {
       if (mounted.current && revision.current === version) setBusy(false)
     }
@@ -121,7 +123,7 @@ export function AgentPanel() {
       if (mounted.current && revision.current === version) setConnection(result)
     } catch (error) {
       if (mounted.current && revision.current === version)
-        setError(error instanceof Error ? error.message : '登录失败')
+        setError(error instanceof Error ? error.message : t('登录失败'))
     } finally {
       if (mounted.current && revision.current === version) setBusy(false)
     }
@@ -142,7 +144,7 @@ export function AgentPanel() {
       }
     } catch (error) {
       if (mounted.current && revision.current === version)
-        setError(error instanceof Error ? error.message : '配置未能应用')
+        setError(error instanceof Error ? error.message : t('配置未能应用'))
     } finally {
       if (mounted.current && revision.current === version) setBusy(false)
     }
@@ -167,7 +169,7 @@ export function AgentPanel() {
       return
     }
     if (connection?.status !== 'connected') {
-      setError('请先连接智能体')
+      setError(t('请先连接智能体'))
       return
     }
     setSaving(true)
@@ -183,7 +185,7 @@ export function AgentPanel() {
       })
       open(null)
     } catch (error) {
-      setError(error instanceof Error ? error.message : '设置未保存')
+      setError(error instanceof Error ? error.message : t('设置未保存'))
     } finally {
       if (mounted.current) setSaving(false)
     }
@@ -198,29 +200,30 @@ export function AgentPanel() {
     >
       <div className="models-content">
         <label className="field">
-          智能体
+          {t('智能体')}
           <select
             value={config.kind}
             disabled={saving}
             onChange={(event) => update({ kind: event.target.value as AgentConfig['kind'] })}
           >
+            {/* i18next-instrument-ignore: provider brand name */}
             <option value="codex">Codex</option>
-            <option value="custom">自定义 ACP</option>
+            <option value="custom">{t('自定义 ACP')}</option>
           </select>
         </label>
         {config.kind === 'custom' && (
           <>
             <label className="field">
-              ACP 程序
+              {t('ACP 程序')}
               <input
                 required
                 value={config.command ?? ''}
-                placeholder="可执行程序的绝对路径"
+                placeholder={t('可执行程序的绝对路径')}
                 onChange={(event) => update({ command: event.target.value })}
               />
             </label>
             <label className="field">
-              启动参数
+              {t('启动参数')}
               <input
                 value={args}
                 placeholder='["--acp"]'
@@ -245,24 +248,24 @@ export function AgentPanel() {
               <span className="save-dot" />
             )}
             {busy
-              ? '正在连接'
+              ? t('正在连接')
               : connection?.status === 'connected'
-                ? `${connection.name} 已连接`
+                ? t('{{name}} 已连接', { name: connection.name })
                 : connection?.status === 'authenticating'
-                  ? '等待登录'
+                  ? t('等待登录')
                   : connection?.status === 'login-required'
-                    ? '需要登录'
-                    : '未连接'}
+                    ? t('需要登录')
+                    : t('未连接')}
           </span>
           {connection || busy ? (
             <Button type="button" onClick={() => void disconnect()}>
               <Square size={13} />
-              断开
+              {t('断开')}
             </Button>
           ) : (
             <Button type="button" onClick={() => void connect()} disabled={saving}>
               <PlugZap size={14} />
-              连接
+              {t('连接')}
             </Button>
           )}
         </div>
@@ -293,7 +296,8 @@ export function AgentPanel() {
               {config.options?.[option.id] &&
                 !option.choices.some((choice) => choice.value === config.options?.[option.id]) && (
                   <option value={config.options[option.id]} disabled>
-                    {config.options[option.id]}（请重新选择）
+                    {config.options[option.id]}
+                    {t('（请重新选择）')}
                   </option>
                 )}
               {option.choices.map((choice) => (
@@ -305,7 +309,7 @@ export function AgentPanel() {
           </label>
         ))}
         {!!connection?.commands.length && (
-          <div className="agent-commands" aria-label="智能体命令">
+          <div className="agent-commands" aria-label={t('智能体命令')}>
             {connection.commands.map((command) => (
               <code key={command.name} title={command.description}>
                 /{command.name}
@@ -314,12 +318,12 @@ export function AgentPanel() {
           </div>
         )}
         <details className="advanced-settings">
-          <summary>工作目录</summary>
+          <summary>{t('工作目录')}</summary>
           <label className="field">
-            目录
+            {t('目录')}
             <input
               value={config.cwd ?? ''}
-              placeholder="默认使用研究存储目录下的 agent-workspace"
+              placeholder={t('默认使用研究存储目录下的 agent-workspace')}
               onChange={(event) => update({ cwd: event.target.value })}
             />
           </label>
@@ -329,7 +333,8 @@ export function AgentPanel() {
       <div className="modal-footer split models-footer">
         <span className="settings-save-status">
           <span className="save-dot" />
-          ACP
+          {/* i18next-instrument-ignore-next-line: protocol identifier */}
+          {'ACP'}
         </span>
         <Button
           type="submit"
@@ -337,7 +342,7 @@ export function AgentPanel() {
           disabled={saving || busy || connection?.status === 'authenticating'}
         >
           {saving && <LoaderCircle className="spin" size={13} />}
-          {configured ? '完成' : '使用此智能体'}
+          {configured ? t('完成') : t('使用此智能体')}
         </Button>
       </div>
     </form>

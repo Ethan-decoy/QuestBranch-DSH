@@ -4,6 +4,7 @@ import { useId } from 'react'
 import { client } from './client'
 import { SignalIcon } from './components'
 import type { Theme } from './theme-colors'
+import { useTranslation } from 'react-i18next'
 
 type ThemeMode = Theme | 'system'
 const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
@@ -89,17 +90,18 @@ function ThemeMiniature({ theme }: { theme: Theme }) {
 }
 
 export function ThemeSwitcher() {
+  const { t } = useTranslation()
   const { theme, mode, choose, persistent } = useTheme()
   const name = useId()
   return (
     <div className="theme-preference">
       <fieldset className="theme-switch">
-        <legend className="sr-only">界面主题</legend>
+        <legend className="sr-only">{t('界面主题')}</legend>
         {(
           [
-            ['system', '跟随系统'],
-            ['light', '亮色'],
-            ['dark', '深色'],
+            ['system', t('跟随系统')],
+            ['light', t('亮色')],
+            ['dark', t('深色')],
           ] as const
         ).map(([value, label]) => (
           <label className="theme-option" key={value}>
@@ -107,11 +109,13 @@ export function ThemeSwitcher() {
               type="radio"
               name={name}
               value={value}
-              aria-label={`${label}主题`}
+              aria-label={t('{{label}}主题', { label })}
               checked={mode === value}
               onChange={() => choose(value)}
               title={
-                value === 'system' ? `跟随系统（当前${theme === 'dark' ? '深色' : '亮色'}）` : label
+                value === 'system'
+                  ? t('跟随系统（当前{{val}}）', { val: theme === 'dark' ? t('深色') : t('亮色') })
+                  : label
               }
             />
             <span className="theme-mode-preview" aria-hidden="true">
@@ -128,7 +132,7 @@ export function ThemeSwitcher() {
       {!persistent && (
         <small role="status">
           <SignalIcon tone="warning" size={14} />
-          当前环境无法记住主题，本次切换仍然生效。
+          {t('当前环境无法记住主题，本次切换仍然生效。')}
         </small>
       )}
     </div>

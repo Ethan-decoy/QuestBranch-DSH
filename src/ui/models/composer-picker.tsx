@@ -1,3 +1,4 @@
+import { effortText } from '../i18n-labels'
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import { Popover } from 'radix-ui'
@@ -5,12 +6,13 @@ import { Brain, ChevronDown, LoaderCircle, Settings2 } from 'lucide-react'
 import { useApp } from '../state'
 import { client, providerConnection } from '../client'
 import { connectionKey } from '../provider-connection'
-import { effortLabels, resolveModelSelection } from '../../research/model-catalog'
+import { resolveModelSelection } from '../../research/model-catalog'
 import type { ReasoningEffort, Settings } from '../../research/types'
 import type { AgentConnection } from '../../research/agent'
 import { Button, Feedback } from '../components'
 import { restoreAgentSelection } from './agent-selection'
 import { HostModelPicker } from './host-picker'
+import { useTranslation } from 'react-i18next'
 
 function pickerIdentity(settings: Settings) {
   return settings.backend === 'acp'
@@ -33,6 +35,7 @@ export function ComposerModelPicker({ onBusyChange }: { onBusyChange(busy: boole
   )
 }
 function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): void }) {
+  const { t } = useTranslation()
   const settings = useApp((s) => s.snapshot!.settings)
   const researching = useApp((s) => s.snapshot!.runs.some((run) => run.status === 'running'))
   const dialog = useApp((s) => s.dialog)
@@ -62,18 +65,18 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
       )?.name ||
       settings.agent?.options?.model ||
       settings.agent?.name ||
-      '选择智能体'
-    : model?.displayName || settings.model || '选择模型'
+      t('选择智能体')
+    : model?.displayName || settings.model || t('选择模型')
   const chosenEffort = acp
     ? agentEffort?.choices.find(
         (choice) =>
           choice.value === (settings.agent?.options?.[agentEffort.id] ?? agentEffort.value),
       )?.name || settings.agent?.options?.reasoning_effort
     : settings.reasoningEffort
-      ? effortLabels[settings.reasoningEffort]
+      ? effortText(settings.reasoningEffort)
       : model
-        ? `默认 · ${effortLabels[model.defaultReasoningEffort]}`
-        : '默认'
+        ? t('默认 · {{val}}', { val: effortText(model.defaultReasoningEffort) })
+        : t('默认')
   const openModels = () => {
     setExpanded(false)
     useApp.getState().open('models')
@@ -98,7 +101,7 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
       try {
         if (acp) {
           setAgent(null)
-          if (!settings.agent || !client.agent) throw new Error('请先连接智能体')
+          if (!settings.agent || !client.agent) throw new Error(t('请先连接智能体'))
           let result = await client.agent.connect(settings.agent)
           ownedConnection = result.id
           if (disposed) {
@@ -115,17 +118,17 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
           )
           if (disposed) return
           setAgent(result)
-          if (result.status !== 'connected') throw new Error('请先在模型与连接中完成智能体登录')
+          if (result.status !== 'connected') throw new Error(t('请先在模型与连接中完成智能体登录'))
         } else {
           const cached = providerConnection.getState()
           if (cached.key !== identity || !cached.result || cached.status === 'error')
             await cached.connect(settings)
           const result = providerConnection.getState()
           if (result.key === identity && result.error) throw new Error(result.error)
-          if (result.result?.status === 'login-required') throw new Error('请先连接此模型账号')
+          if (result.result?.status === 'login-required') throw new Error(t('请先连接此模型账号'))
         }
       } catch (error) {
-        if (!disposed) setError(error instanceof Error ? error.message : '无法读取模型选项')
+        if (!disposed) setError(error instanceof Error ? error.message : t('无法读取模型选项'))
       } finally {
         if (!disposed) {
           setLoading(false)
@@ -147,12 +150,12 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
     setError('')
     try {
       const latest = useApp.getState().snapshot!.settings
-      if (pickerIdentity(latest) !== identity) throw new Error('连接已改变，请重新选择')
+      if (pickerIdentity(latest) !== identity) throw new Error(t('连接已改变，请重新选择'))
       let next: Settings
       if (acp) {
         const option = kind === 'model' ? agentModel : agentEffort
         if (!agent || !option || !option.choices.some((choice) => choice.value === value))
-          throw new Error('当前智能体未提供该选项')
+          throw new Error(t('当前智能体未提供该选项'))
         const configured = await client.agent!.configure(agent.id, option.id, value)
         setAgent(configured)
         next = {
@@ -165,9 +168,9 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
           },
         }
       } else {
-        if (!catalog) throw new Error('模型目录尚未就绪')
+        if (!catalog) throw new Error(t('模型目录尚未就绪'))
         if (kind === 'model' && !catalog.models.some((entry) => entry.model === value))
-          throw new Error('请选择当前目录中的模型')
+          throw new Error(t('请选择当前目录中的模型'))
         const patch =
           kind === 'model'
             ? { model: value, reasoningEffort: '' as const }
@@ -177,7 +180,7 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
       }
       await useApp.getState().command({ type: 'save-settings', settings: next })
     } catch (error) {
-      setError(error instanceof Error ? error.message : '模型选择未保存')
+      setError(error instanceof Error ? error.message : t('模型选择未保存'))
     } finally {
       setSaving(false)
     }
@@ -192,7 +195,7 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
           <Popover.Trigger asChild>
             <button
               className="composer-model"
-              aria-label="选择模型"
+              aria-label={t('选择模型')}
               title={modelName}
               disabled={researching || saving}
               onClick={() => {
@@ -205,8 +208,8 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
           </Popover.Trigger>
           <button
             className="composer-effort"
-            aria-label="选择思考强度"
-            title={`思考强度：${chosenEffort || '由智能体提供'}`}
+            aria-label={t('选择思考强度')}
+            title={t('思考强度：{{val}}', { val: chosenEffort || t('由智能体提供') })}
             disabled={researching || saving}
             aria-haspopup="dialog"
             aria-expanded={expanded}
@@ -216,7 +219,7 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
             }}
           >
             <Brain size={13} aria-hidden="true" />
-            <span>{chosenEffort || '强度'}</span>
+            <span>{chosenEffort || t('强度')}</span>
           </button>
         </div>
       </Popover.Anchor>
@@ -227,34 +230,35 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
           align="start"
           sideOffset={9}
           collisionPadding={12}
-          aria-label="模型与思考强度"
+          aria-label={t('模型与思考强度')}
           onOpenAutoFocus={(event) => event.preventDefault()}
         >
           <div className="composer-picker-heading">
-            <strong>{acp ? settings.agent?.name || '智能体' : '模型'}</strong>
+            <strong>{acp ? settings.agent?.name || t('智能体') : t('模型')}</strong>
             {(loading || saving) && (
-              <LoaderCircle size={14} className="spin" aria-label="正在更新模型选项" />
+              <LoaderCircle size={14} className="spin" aria-label={t('正在更新模型选项')} />
             )}
           </div>
           <label className="field">
-            模型
+            {t('模型')}
             <select
               ref={modelField}
-              aria-label="聊天模型"
+              aria-label={t('聊天模型')}
               disabled={busy || (acp ? !agentModel : !catalog)}
               value={acp ? agentValue(agentModel) : settings.model}
               onChange={(event) => void select('model', event.target.value)}
             >
-              {acp && !agentModel && <option value="">由智能体管理</option>}
+              {acp && !agentModel && <option value="">{t('由智能体管理')}</option>}
               {acp &&
                 agentModel &&
                 !agentModel.choices.some((choice) => choice.value === agentValue(agentModel)) && (
                   <option value={agentValue(agentModel)} disabled>
-                    {agentValue(agentModel)}（请重新选择）
+                    {agentValue(agentModel)}
+                    {t('（请重新选择）')}
                   </option>
                 )}
               {!acp && !catalog?.models.some((entry) => entry.model === settings.model) && (
-                <option value={settings.model}>{settings.model || '选择模型'}</option>
+                <option value={settings.model}>{settings.model || t('选择模型')}</option>
               )}
               {acp
                 ? agentModel?.choices.map((choice) => (
@@ -270,20 +274,21 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
             </select>
           </label>
           <label className="field">
-            思考强度
+            {t('思考强度')}
             <select
               ref={effortField}
-              aria-label="聊天思考强度"
+              aria-label={t('聊天思考强度')}
               disabled={busy || (acp ? !agentEffort : !model)}
               value={acp ? agentValue(agentEffort) : (settings.reasoningEffort ?? '')}
               onChange={(event) => void select('effort', event.target.value)}
             >
-              {acp && !agentEffort && <option value="">此连接未提供强度选项</option>}
+              {acp && !agentEffort && <option value="">{t('此连接未提供强度选项')}</option>}
               {acp &&
                 agentEffort &&
                 !agentEffort.choices.some((choice) => choice.value === agentValue(agentEffort)) && (
                   <option value={agentValue(agentEffort)} disabled>
-                    {agentValue(agentEffort)}（请重新选择）
+                    {agentValue(agentEffort)}
+                    {t('（请重新选择）')}
                   </option>
                 )}
               {acp ? (
@@ -295,19 +300,21 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
               ) : (
                 <>
                   <option value="">
-                    默认{model ? ` · ${effortLabels[model.defaultReasoningEffort]}` : ''}
+                    {t('默认')}
+                    {model ? ` · ${effortText(model.defaultReasoningEffort)}` : ''}
                   </option>
                   {settings.reasoningEffort &&
                     !model?.supportedReasoningEfforts.some(
                       (entry) => entry.reasoningEffort === settings.reasoningEffort,
                     ) && (
                       <option value={settings.reasoningEffort}>
-                        {effortLabels[settings.reasoningEffort]}（请重新选择）
+                        {effortText(settings.reasoningEffort)}
+                        {t('（请重新选择）')}
                       </option>
                     )}
                   {model?.supportedReasoningEfforts.map((entry) => (
                     <option key={entry.reasoningEffort} value={entry.reasoningEffort}>
-                      {effortLabels[entry.reasoningEffort]}
+                      {effortText(entry.reasoningEffort)}
                     </option>
                   ))}
                 </>
@@ -317,7 +324,7 @@ function ProviderModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): vo
           {error && <Feedback tone="error">{error}</Feedback>}
           <Button variant="ghost" className="composer-connections" onClick={openModels}>
             <Settings2 size={14} />
-            模型与连接
+            {t('模型与连接')}
           </Button>
         </Popover.Content>
       </Popover.Portal>

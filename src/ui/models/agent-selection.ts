@@ -1,3 +1,4 @@
+import { t } from '../../i18n'
 import type { AgentClient, AgentConnection } from '../../research/agent'
 
 /** A new ACP configuration session must restore the model before dependent options. */
@@ -18,7 +19,7 @@ export async function restoreAgentSelection(
   for (const [id, value] of entries) {
     const option = current.options.find((option) => option.id === id)
     if (!option?.choices.some((choice) => choice.value === value))
-      throw new Error('智能体已不支持保存的模型或配置，请重新选择')
+      throw new Error(t('智能体已不支持保存的模型或配置，请重新选择'))
     if (option.value !== value) {
       current = await client.configure(current.id, id, value)
       onState?.(current)

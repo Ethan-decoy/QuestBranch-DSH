@@ -1,3 +1,4 @@
+import { t } from '../../i18n'
 import { useEffect, useState } from 'react'
 import { Popover } from 'radix-ui'
 import { Brain, ChevronDown, LoaderCircle } from 'lucide-react'
@@ -5,6 +6,7 @@ import { client } from '../client'
 import { useApp } from '../state'
 import { Modal } from '../components'
 import type { NativeModelSelection, NativeModelState } from '../../research/agent'
+import { useTranslation } from 'react-i18next'
 
 function HostFields({
   state,
@@ -15,6 +17,7 @@ function HostFields({
   busy: boolean
   select(value: NativeModelSelection): void
 }) {
+  const { t } = useTranslation()
   const { catalog, selection } = state
   const model = catalog.groups
     .find((g) => g.id === selection.provider)
@@ -22,9 +25,9 @@ function HostFields({
   return (
     <div className="form-grid">
       <label className="field">
-        模型
+        {t('模型')}
         <select
-          aria-label="DSH 模型"
+          aria-label={t('DSH 模型')}
           disabled={busy}
           value={JSON.stringify([selection.provider, selection.model])}
           onChange={(e) => {
@@ -36,7 +39,7 @@ function HostFields({
             (g) => g.id === selection.provider && g.models.some((m) => m.id === selection.model),
           ) && (
             <option value={JSON.stringify([selection.provider, selection.model])}>
-              {selection.model || '请先在 DSH 配置模型'}
+              {selection.model || t('请先在 DSH 配置模型')}
             </option>
           )}
           {catalog.groups.map((g) => (
@@ -52,14 +55,14 @@ function HostFields({
       </label>
       {model?.reasoning && (
         <label className="field">
-          思考强度
+          {t('思考强度')}
           <select
-            aria-label="DSH 思考强度"
+            aria-label={t('DSH 思考强度')}
             disabled={busy}
             value={selection.reasoningEffort ?? ''}
             onChange={(e) => select({ ...selection, reasoningEffort: e.target.value || undefined })}
           >
-            <option value="">默认</option>
+            <option value="">{t('默认')}</option>
             {model.reasoning.efforts.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.name}
@@ -108,7 +111,7 @@ function useHostModels() {
       await client.host!.selectModel(nodeId, selection)
       setState(await client.host!.models(nodeId))
     } catch (error) {
-      setError(error instanceof Error ? error.message : '模型切换失败')
+      setError(error instanceof Error ? error.message : t('模型切换失败'))
     } finally {
       setBusy(false)
     }
@@ -116,9 +119,10 @@ function useHostModels() {
   return { state, busy: busy || running, error, select }
 }
 export function HostModelsDialog() {
+  const { t } = useTranslation()
   const models = useHostModels()
   return (
-    <Modal title="DSH 模型">
+    <Modal title={t('DSH 模型')}>
       <div className="modal-body">
         {models.state ? (
           <HostFields {...models} state={models.state} />
@@ -131,6 +135,7 @@ export function HostModelsDialog() {
   )
 }
 export function HostModelPicker({ onBusyChange }: { onBusyChange(busy: boolean): void }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const models = useHostModels()
   useEffect(() => {
@@ -147,17 +152,17 @@ export function HostModelPicker({ onBusyChange }: { onBusyChange(busy: boolean):
         <div className="composer-selection">
           <Popover.Trigger
             className="composer-model"
-            aria-label="选择 DSH 模型"
+            aria-label={t('选择 DSH 模型')}
             disabled={models.busy}
           >
-            <span>{model?.name || selection?.model || 'DSH 模型'}</span>
+            <span>{model?.name || selection?.model || t('DSH 模型')}</span>
             <ChevronDown size={12} aria-hidden="true" />
           </Popover.Trigger>
           {model?.reasoning && (
             <button
               type="button"
               className="composer-effort"
-              aria-label="选择 DSH 思考强度"
+              aria-label={t('选择 DSH 思考强度')}
               aria-haspopup="dialog"
               aria-expanded={open}
               disabled={models.busy}
@@ -166,7 +171,7 @@ export function HostModelPicker({ onBusyChange }: { onBusyChange(busy: boolean):
               <Brain size={13} aria-hidden="true" />
               <span>
                 {model.reasoning.efforts.find((e) => e.id === selection?.reasoningEffort)?.name ||
-                  '默认'}
+                  t('默认')}
               </span>
             </button>
           )}
@@ -179,12 +184,13 @@ export function HostModelPicker({ onBusyChange }: { onBusyChange(busy: boolean):
           align="start"
           sideOffset={9}
           collisionPadding={12}
-          aria-label="DSH 模型与思考强度"
+          aria-label={t('DSH 模型与思考强度')}
         >
           <div className="composer-picker-heading">
+            {/* i18next-instrument-ignore: host brand name */}
             <strong>DeepSeek Harness</strong>
             {models.busy && (
-              <LoaderCircle size={14} className="spin" aria-label="正在更新模型选项" />
+              <LoaderCircle size={14} className="spin" aria-label={t('正在更新模型选项')} />
             )}
           </div>
           {models.state ? (

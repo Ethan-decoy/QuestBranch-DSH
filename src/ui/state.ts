@@ -10,6 +10,7 @@ import {
   saveWorkbenchWidths,
   type WorkbenchWidths,
 } from './workbench-layout'
+import i18next from '../i18n'
 type NavigationTarget = Pick<
   ResearchSearchHit,
   'kind' | 'nodeId' | 'reportId' | 'sourceId' | 'query'
@@ -17,7 +18,7 @@ type NavigationTarget = Pick<
 
 type Dialog =
   'workspace' | 'node' | 'sibling' | 'edit' | 'settings' | 'models' | 'search' | 'compare' | null
-export type SettingsSection = 'appearance' | 'shortcuts' | 'storage'
+export type SettingsSection = 'general' | 'appearance' | 'shortcuts' | 'storage'
 type State = {
   snapshot: Snapshot | null
   workspaceId: string
@@ -59,7 +60,7 @@ export const useApp = create<State>((set, get) => ({
   workspaceId: retained?.workspaceId ?? localStorage.getItem('questbranch-workspace') ?? '',
   view: retained?.view ?? null,
   dialog: null,
-  settingsSection: 'appearance',
+  settingsSection: 'general',
   setSettingsSection: (settingsSection) => set({ settingsSection }),
   error: '',
   busy: false,
@@ -128,7 +129,9 @@ export const useApp = create<State>((set, get) => ({
       }
       set({ snapshot, workspaceId, view })
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : '无法连接本地研究服务' })
+      set({
+        error: error instanceof Error ? error.message : i18next.t('无法连接本地研究服务'),
+      })
     }
   },
   async command(command) {
@@ -148,7 +151,7 @@ export const useApp = create<State>((set, get) => ({
       await get().refresh()
       return result
     } catch (error) {
-      const message = error instanceof Error ? error.message : '操作未完成'
+      const message = error instanceof Error ? error.message : i18next.t('操作未完成')
       set({ error: message })
       throw error
     } finally {
@@ -301,15 +304,16 @@ export const useApp = create<State>((set, get) => ({
     set({
       dialog,
       dialogReturnToGraph: options?.returnToGraph ?? false,
-      ...(dialog === 'settings'
-        ? { settingsSection: options?.settingsSection ?? 'appearance' }
-        : {}),
+      ...(dialog === 'settings' ? { settingsSection: options?.settingsSection ?? 'general' } : {}),
     })
   },
   setError: (error) => set({ error }),
   setLayoutWidths: (layoutWidths) => {
     const saved = saveWorkbenchWidths(localStorage, layoutWidths)
-    set({ layoutWidths, ...(!saved ? { error: '布局已调整，但无法保存本机布局偏好' } : {}) })
+    set({
+      layoutWidths,
+      ...(!saved ? { error: i18next.t('布局已调整，但无法保存本机布局偏好') } : {}),
+    })
     return saved
   },
   resetLayout: () => get().setLayoutWidths({ ...defaultWorkbenchWidths }),
