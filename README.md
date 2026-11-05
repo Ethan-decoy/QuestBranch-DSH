@@ -2,13 +2,17 @@
 
 问之的 DeepSeek Harness 非官方研究工作台扩展，由社区独立开发与维护。在 DSH 侧栏打开 QuestBranch，用研究图组织问题，选择分支对话，并保存阶段报告、来源与历史。
 
-**开发者预览候选 `0.1.0-dev.2` · DSH `0.2.1-rc.5` · MIT**
+**开发者预览 `0.1.0-dev.2` · DSH `0.2.1-rc.5` · MIT**
 
-尚未发布 npm 包或 Release，尚未收录到 DSH Discover。当前可以从本仓库构建插件包；提供下载版本后，将出现在[Releases](https://github.com/Ethan-decoy/QuestBranch-DSH/releases)。Windows Host / Web 已完成隔离固定响应验收，包括原生 Agent 工具循环；桌面窗口、真实厂商研究、macOS 和 Linux 的宿主使用仍待实测。
+预构建插件包与 SHA-256 校验文件统一提供在 [Releases](https://github.com/Ethan-decoy/QuestBranch-DSH/releases)。下载 `.tgz` 即可安装，无需克隆源码或编译；本项目尚未启用 npm 分发。
+
+Windows Host / Web 已完成隔离固定响应验收，包括原生 Agent 工具循环；桌面窗口、真实厂商研究、macOS 和 Linux 的宿主使用仍待实测。此版本面向愿意反馈问题的开发者。
 
 ## 安装试用包
 
-先按[开发说明](docs/development.md)生成 `.tgz` 和 `.sha256`，或使用实际提供的 Release 附件。可在 PowerShell 用 `Get-FileHash '<插件包路径>' -Algorithm SHA256` 核对校验值。使用已安装的 DSH 自带 CLI；正常退出 DSH 后执行，替换安装路径与附件路径：
+从 [Releases](https://github.com/Ethan-decoy/QuestBranch-DSH/releases) 下载同一版本的 `.tgz` 与 `.tgz.sha256`，在 PowerShell 用 `Get-FileHash '<插件包路径>' -Algorithm SHA256` 核对校验值。GitHub 自动生成的 Source code 压缩包供源码开发，不作为插件安装包。
+
+使用已安装的 DSH 自带 CLI；正常退出 DSH 后执行，替换安装路径与附件路径：
 
 ```powershell
 & 'C:\path\to\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd' plugin --profile desktop add 'D:\downloads\dsh-plugin-questbranch-0.1.0-dev.2.tgz'
@@ -64,7 +68,7 @@ DSH `0.2.1-rc.5` 尚无新版插件版本列表与更新接口。后续 DSH 的 
 
 ## 产品关系
 
-[独立版 QuestBranch](https://github.com/Ethan-decoy/QuestBranch) 与本扩展复用研究模型、图谱、报告和存储规则。独立版提供自己的模型连接；本扩展直接使用 DSH 的原生 Agent，不携带 Pi AI、ACP 子进程或另一套账号管理。
+独立版 QuestBranch 与本扩展复用研究模型、图谱、报告和存储规则。独立版提供自己的模型连接；本扩展直接使用 DSH 的原生 Agent，不携带 Pi AI、ACP 子进程或另一套账号管理。
 
 QuestBranch owns the structure and continuity of exploration, not the authority of conclusions or execution.
 
