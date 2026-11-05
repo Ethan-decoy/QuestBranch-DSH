@@ -21,10 +21,25 @@ const inventory = JSON.parse(
   }),
 )
 const overrides = JSON.parse(readFileSync(join(root, 'config/dsh-license-overrides.json'), 'utf8'))
+const require = createRequire(join(root, 'package.json'))
+const compiler = JSON.parse(readFileSync(require.resolve('typescript/package.json'), 'utf8'))
+// Optional type peers can pull the development compiler into pnpm's --prod list.
+// Neither the compiler nor its platform binaries are shipped in the plugin.
+const buildOnly = new Set(
+  !pkg.dependencies?.typescript && pkg.devDependencies?.typescript === compiler.version
+    ? [
+        `typescript@${compiler.version}`,
+        ...Object.entries(compiler.optionalDependencies ?? {}).map(
+          ([name, version]) => `${name}@${version}`,
+        ),
+      ]
+    : [],
+)
 const packages = new Map()
 function collect(directory) {
   const metadata = JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8'))
   const id = `${metadata.name}@${metadata.version}`
+  if (buildOnly.has(id)) return
   const texts = readdirSync(directory)
     .filter(
       (file) =>
@@ -57,7 +72,6 @@ function collect(directory) {
 for (const records of Object.values(inventory))
   for (const record of records) for (const directory of record.paths) collect(directory)
 // Tailwind generates stylesheet content; its compiler is not a plugin runtime dependency.
-const require = createRequire(join(root, 'package.json'))
 collect(resolve(require.resolve('tailwindcss/package.json'), '..'))
 const lockHash = createHash('sha256')
   .update(readFileSync(join(root, 'pnpm-lock.yaml')))
@@ -68,6 +82,7 @@ Generated from the DSH source lockfile's production dependency inventory plus
 the Tailwind stylesheet license. This is a conservative superset of bundled
 dependencies. Original copyright, license and notice texts follow.
 DSH, its externally loaded SDKs and Node.js are supplied by the host separately.
+Development-only TypeScript compiler packages are excluded.
 
 Lockfile SHA-256: ${lockHash}
 Packages: ${packages.size}

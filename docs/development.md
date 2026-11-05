@@ -36,7 +36,7 @@ GitHub Actions 在 Windows 与 Linux 检查源码、构建并生成试用构件�
 
 ## 第三方许可
 
-更新依赖后运行 `pnpm notices`，它从 `pnpm licenses list --prod --json` 读取锁定的生产依赖，保留原始版权和许可文本，并补入生成样式所用的 Tailwind 许可。结果为 `THIRD_PARTY_NOTICES.txt`；构建时一并交付。该清单保守覆盖生产依赖，不声称其中每个包都保留在最终 JavaScript 中。
+更新依赖后运行 `pnpm notices`，它从 `pnpm licenses list --prod --json` 读取锁定的生产依赖，保留原始版权和许可文本，并补入生成样式所用的 Tailwind 许可。可选类型 peer 带入的开发用 TypeScript 及其平台编译器不随插件交付，按声明的精确开发版本排除。结果为 `THIRD_PARTY_NOTICES.txt`；构建时一并交付。该清单是运行依赖的保守全集，不声称其中每个包都保留在最终 JavaScript 中。
 
 个别 npm 包未附许可文本时，`config/dsh-license-overrides.json` 固定适用版本、上游文本来源与校验值，原文放在 `licenses/`。缺少或不一致会导致检查失败，不能用一份通用 MIT 文本代替不同作者的版权声明。
 
