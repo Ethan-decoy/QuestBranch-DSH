@@ -14,6 +14,7 @@ const required = [
   'cordis.patch.yml',
   'package.json',
   'README.md',
+  'README.en.md',
   'LICENSE',
   'THIRD_PARTY_NOTICES.txt',
   'CHANGELOG.md',

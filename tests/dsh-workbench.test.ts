@@ -131,6 +131,214 @@ async function settle(f: ReturnType<typeof fixture>, id: string) {
 }
 
 describe('DSH workbench research adapter', () => {
+  it.each(['catalog', 'create'] as const)(
+    'cancels pending %s preparation without admitting a prompt or saving a late binding',
+    async (stage) => {
+      const f = fixture()
+      let release!: () => void
+      const pending = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const catalog = f.ctx.sessionController.modelCatalog
+      const create = f.ctx.sessionController.create
+      const blocked = vi.fn(async () => {
+        await pending
+      })
+      if (stage === 'catalog')
+        f.ctx.sessionController.modelCatalog = async () => {
+          await blocked()
+          return catalog()
+        }
+      else
+        f.ctx.sessionController.create = async (request) => {
+          await blocked()
+          return create(request)
+        }
+      const run = await f.service.command({
+        type: 'send-message',
+        nodeId: f.nodeId,
+        message: '准备时停止',
+      })
+      await vi.waitFor(() => expect(blocked).toHaveBeenCalled())
+      try {
+        await f.service.command({ type: 'cancel-research', runId: run.id! })
+        expect((await settle(f, run.id!)).status).toBe('cancelled')
+        expect(f.prompts).toHaveLength(0)
+        expect(f.bindings.get(f.nodeId)).toBeUndefined()
+      } finally {
+        release()
+        await new Promise((resolve) => setImmediate(resolve))
+      }
+      expect(f.bindings.get(f.nodeId)).toBeUndefined()
+      expect(f.prompts).toHaveLength(0)
+    },
+  )
+  it('closes during host preparation and ignores its late result', async () => {
+    const f = fixture()
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const catalog = f.ctx.sessionController.modelCatalog
+    const create = vi.spyOn(f.ctx.sessionController, 'create')
+    const loading = vi.fn(async () => {
+      await pending
+      return catalog()
+    })
+    f.ctx.sessionController.modelCatalog = loading
+    const run = await f.service.command({
+      type: 'send-message',
+      nodeId: f.nodeId,
+      message: '准备时退出',
+    })
+    await vi.waitFor(() => expect(loading).toHaveBeenCalled())
+    let closed = false
+    const closing = f.service.close().then(() => {
+      closed = true
+    })
+    try {
+      await vi.waitFor(() => expect(closed).toBe(true))
+      expect(f.store.run(run.id!).status).toBe('cancelled')
+    } finally {
+      release()
+      await closing
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+    expect(create).not.toHaveBeenCalled()
+    expect(f.bindings.get(f.nodeId)).toBeUndefined()
+    await expect(
+      f.service.command({ type: 'send-message', nodeId: f.nodeId, message: '退出后重入' }),
+    ).rejects.toThrow('关闭')
+  })
+  it('cancels a run waiting for model selection and does not persist selection after closing', async () => {
+    const f = fixture()
+    await f.runtime.ensure(f.nodeId)
+    const original = structuredClone(f.bindings.get(f.nodeId))
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const changing = vi.fn(async () => {
+      await pending
+    })
+    f.ctx.sessionController.selectModel = changing
+    const selecting = f.runtime
+      .select(f.nodeId, { provider: 'fixture', model: 'research', reasoningEffort: 'high' })
+      .catch((error) => error)
+    await vi.waitFor(() => expect(changing).toHaveBeenCalled())
+    const run = await f.service.command({
+      type: 'send-message',
+      nodeId: f.nodeId,
+      message: '停止等待切换',
+    })
+    try {
+      await f.service.command({ type: 'cancel-research', runId: run.id! })
+      expect((await settle(f, run.id!)).status).toBe('cancelled')
+      await f.service.close()
+    } finally {
+      release()
+      await selecting
+    }
+    expect(f.prompts).toHaveLength(0)
+    expect(f.bindings.get(f.nodeId)).toEqual(original)
+  })
+  it('keeps a shared session preparation alive for a model picker after the run is cancelled', async () => {
+    const f = fixture()
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const catalog = f.ctx.sessionController.modelCatalog
+    const loading = vi.fn(async () => {
+      await pending
+      return catalog()
+    })
+    f.ctx.sessionController.modelCatalog = loading
+    const creating = vi.spyOn(f.ctx.sessionController, 'create')
+    const selecting = f.runtime.select(f.nodeId, {
+      provider: 'fixture',
+      model: 'research',
+      reasoningEffort: 'high',
+    })
+    await vi.waitFor(() => expect(loading).toHaveBeenCalled())
+    const run = await f.service.command({
+      type: 'send-message',
+      nodeId: f.nodeId,
+      message: '停止这一轮',
+    })
+    try {
+      await f.service.command({ type: 'cancel-research', runId: run.id! })
+      expect((await settle(f, run.id!)).status).toBe('cancelled')
+    } finally {
+      release()
+      await selecting
+    }
+    expect(creating).toHaveBeenCalledTimes(1)
+    expect(f.bindings.get(f.nodeId).selection.reasoningEffort).toBe('high')
+    expect(f.prompts).toHaveLength(0)
+  })
+  it('starts a fresh preparation after cancellation without adopting the old late result', async () => {
+    const f = fixture()
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const catalog = await f.ctx.sessionController.modelCatalog()
+    vi.spyOn(f.ctx.sessionController, 'modelCatalog').mockImplementationOnce(async () => {
+      await pending
+      return catalog
+    })
+    const first = await f.service.command({
+      type: 'send-message',
+      nodeId: f.nodeId,
+      message: '取消旧准备',
+    })
+    try {
+      await f.service.command({ type: 'cancel-research', runId: first.id! })
+      expect((await settle(f, first.id!)).status).toBe('cancelled')
+      const second = await f.service.command({
+        type: 'send-message',
+        nodeId: f.nodeId,
+        message: '重新研究',
+      })
+      expect((await settle(f, second.id!)).status).toBe('completed')
+      const binding = structuredClone(f.bindings.get(f.nodeId))
+      release()
+      await new Promise((resolve) => setImmediate(resolve))
+      expect(f.bindings.get(f.nodeId)).toEqual(binding)
+      expect(f.prompts).toHaveLength(1)
+    } finally {
+      release()
+    }
+  })
+  it('cancels an unresponsive prompt admission without committing its late material digest', async () => {
+    const f = fixture()
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    f.respond(async () => {
+      await pending
+    })
+    const run = await f.service.command({
+      type: 'send-message',
+      nodeId: f.nodeId,
+      message: '停止等待接收',
+    })
+    await vi.waitFor(() => expect(f.prompts).toHaveLength(1))
+    try {
+      await f.service.command({ type: 'cancel-research', runId: run.id! })
+      const stopped = await settle(f, run.id!)
+      expect(stopped.status).toBe('cancelled')
+      expect(stopped.agent?.input?.acceptedAt).toBeUndefined()
+      release()
+      await new Promise((resolve) => setImmediate(resolve))
+      expect(f.bindings.get(f.nodeId).materialDigest).toBe('')
+      expect(f.store.run(run.id!)).toEqual(stopped)
+    } finally {
+      release()
+    }
+  })
   it('publishes a paused text stream promptly and retains its last text on cancellation', async () => {
     vi.useFakeTimers()
     try {
@@ -212,6 +420,29 @@ describe('DSH workbench research adapter', () => {
     expect(f.prompts[1].sessionId).toBe(f.prompts[0].sessionId)
     expect(f.prompts[1].text).not.toContain('此前本节点的公开对话')
     expect(f.prompts[1].text).not.toContain('当前研究材料快照')
+    const recorded = f.store.run(second.id!).agent?.input
+    expect(recorded?.request).toEqual({
+      sessionId: f.prompts[1].sessionId,
+      requestId: second.id,
+      content: [{ type: 'text', text: f.prompts[1].text }],
+    })
+    expect(recorded?.materials.included).toBe(false)
+    expect(recorded?.materials.historyIncluded).toBe(false)
+    expect(recorded?.acceptedAt).toBeDefined()
+    expect(f.store.run(first.id!).agent?.input?.materials.included).toBe(true)
+    const restoredDirectory = mkdtempSync(join(resolve('artifacts/dsh-tests'), 'restored-'))
+    const restored = new ResearchStore(restoredDirectory, { seed: false })
+    try {
+      restored.importWorkspace(f.store.exportWorkspace(f.workspaceId))
+      expect(restored.run(second.id!).agent?.input).toEqual(recorded)
+    } finally {
+      restored.close()
+      const base = resolve('artifacts/dsh-tests')
+      const path = relative(base, restoredDirectory)
+      if (!path || path.startsWith('..') || isAbsolute(path))
+        throw new Error('Unexpected restore path')
+      rmSync(restoredDirectory, { recursive: true, force: true })
+    }
     expect(f.store.snapshot().messages.filter((m) => m.nodeId === f.nodeId)).toHaveLength(4)
     const reopened = new DshBindings(f.directory)
     expect(reopened.get(f.nodeId).sessionId).toBe(f.prompts[0].sessionId)
@@ -326,6 +557,31 @@ describe('DSH workbench research adapter', () => {
     expect(f.store.run(run.id!).phase).toBe('等待在 DSH 中回应')
     release()
     expect((await settle(f, run.id!)).agent?.waitingForResponse).toBe(false)
+  })
+  it('ignores a permission response which arrives after the plugin has closed', async () => {
+    const f = fixture()
+    let release!: () => void
+    const answer = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let observing!: Promise<unknown>
+    f.respond(async (sessionId) => {
+      const observer = f.events.listeners('approval/request')[0]
+      observing = observer({ agent: f.agents.get(sessionId) }, () => answer)
+      await observing
+    })
+    const run = await f.service.command({
+      type: 'send-message',
+      nodeId: f.nodeId,
+      message: '等待时退出',
+    })
+    await vi.waitFor(() => expect(f.store.run(run.id!).agent?.waitingForResponse).toBe(true))
+    await f.service.close()
+    const access = vi.spyOn(f.store, 'run')
+    release()
+    await observing
+    await new Promise((resolve) => setImmediate(resolve))
+    expect(access).not.toHaveBeenCalled()
   })
   it('validates shared commands, owns its storage and leaves credentials with DSH', async () => {
     const f = fixture()

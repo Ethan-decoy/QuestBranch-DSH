@@ -1,8 +1,10 @@
 # QuestBranch for DeepSeek Harness
 
+简体中文 | [English](README.en.md)
+
 问之的 DeepSeek Harness 非官方研究工作台扩展，由社区独立开发与维护。在 DSH 侧栏打开 QuestBranch，用研究图组织问题，选择分支对话，并保存阶段报告、来源与历史。
 
-**开发者预览 `0.1.0-dev.2` · DSH `0.2.1-rc.5` · MIT**
+**开发者预览 `0.1.0-dev.3` · DSH `0.2.1-rc.5` · MIT**
 
 预构建插件包与 SHA-256 校验文件统一提供在 [Releases](https://github.com/Ethan-decoy/QuestBranch-DSH/releases)。下载 `.tgz` 即可安装，无需克隆源码或编译；本项目尚未启用 npm 分发。
 
@@ -15,7 +17,7 @@ Windows Host / Web 已完成隔离固定响应验收，包括原生 Agent 工具
 使用已安装的 DSH 自带 CLI；正常退出 DSH 后执行，替换安装路径与附件路径：
 
 ```powershell
-& 'C:\path\to\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd' plugin --profile desktop add 'D:\downloads\dsh-plugin-questbranch-0.1.0-dev.2.tgz'
+& 'C:\path\to\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd' plugin --profile desktop add 'D:\downloads\dsh-plugin-questbranch-0.1.0-dev.3.tgz'
 ```
 
 重开 DSH，在侧栏选择 **QuestBranch**。账号、模型、工具和技能先在 DSH 配置；在 QB 输入栏选择宿主提供的模型与思考强度。新建研究空间后可以直接对话；明确要求保存报告或创建方向时，由 Agent 调用 QB 工具完成。
@@ -31,7 +33,7 @@ $dshCli = 'C:\path\to\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd'
 # 仅首次创建新的隔离 profile：
 & $dshCli --profile qb-trial --from-default-profile web --dump-config
 # 首次安装或更新附件：
-& $dshCli plugin --profile qb-trial add 'D:\downloads\dsh-plugin-questbranch-0.1.0-dev.2.tgz'
+& $dshCli plugin --profile qb-trial add 'D:\downloads\dsh-plugin-questbranch-0.1.0-dev.3.tgz'
 & $dshCli --profile qb-trial
 ```
 

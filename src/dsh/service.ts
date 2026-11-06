@@ -10,6 +10,7 @@ import { DshRuntime } from './runtime'
 /** Shared QB operations with one native DSH runtime; no model-provider stack. */
 export class DshResearchService {
   private active = new Map<string, { abort: AbortController; done: Promise<void> }>()
+  private closing?: Promise<void>
   constructor(
     readonly store: ResearchStore,
     readonly runtime: DshRuntime,
@@ -36,6 +37,7 @@ export class DshResearchService {
     }
   }
   async command(input: AppCommand) {
+    if (this.closing) throw new Error('DSH 插件已关闭')
     const command = commandSchema.parse(input)
     switch (command.type) {
       case 'create-workspace':
@@ -150,9 +152,13 @@ export class DshResearchService {
       })
     }
   }
-  async close() {
+  close(): Promise<void> {
+    if (this.closing) return this.closing
     for (const { abort } of this.active.values()) abort.abort()
-    await Promise.allSettled([...this.active.values()].map((v) => v.done))
-    await this.runtime.close()
+    this.closing = Promise.all([
+      this.runtime.close(),
+      ...[...this.active.values()].map((v) => v.done),
+    ]).then(() => {})
+    return this.closing
   }
 }

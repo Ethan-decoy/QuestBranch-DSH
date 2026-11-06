@@ -21,6 +21,26 @@ type Turn = {
   publishTimer?: ReturnType<typeof setTimeout>
   approvals: number
 }
+type Creation = { promise: Promise<string>; abort: AbortController; readers: number }
+
+/** Detach a caller from an unabortable Host call; always observe late rejection. */
+function waitFor<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason)
+    signal.addEventListener('abort', abort, { once: true })
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', abort)
+        resolve(value)
+      },
+      (error) => {
+        signal.removeEventListener('abort', abort)
+        reject(error)
+      },
+    )
+    if (signal.aborted) abort()
+  })
+}
 const object = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
 const toolTitles = new Map<string, string>(
@@ -40,8 +60,9 @@ const textContent = (value: unknown) =>
 export class DshRuntime {
   private turns = new Map<string, Turn>()
   private subscriptions: Disposer[]
-  private creating = new Map<string, Promise<string>>()
+  private creating = new Map<string, Creation>()
   private selections = new Map<string, Promise<void>>()
+  private lifetime = new AbortController()
   constructor(
     private ctx: DshContext,
     private store: ResearchStore,
@@ -134,32 +155,59 @@ export class DshRuntime {
       ),
     ]
   }
-  async ensure(nodeId: string): Promise<string> {
+  async ensure(nodeId: string, requestSignal: AbortSignal = this.lifetime.signal): Promise<string> {
+    const signal = AbortSignal.any([requestSignal, this.lifetime.signal])
+    signal.throwIfAborted()
     if (this.store.node(nodeId).removedAt) throw new Error('此研究分支已移除')
     const known = this.bindings.get(nodeId)
     if (known) return known.sessionId
-    const pending = this.creating.get(nodeId)
-    if (pending) return pending
-    const create = (async () => {
-      const catalog = await this.ctx.sessionController.modelCatalog()
-      const { sessionId } = await this.ctx.sessionController.create({ cwd: this.cwd })
-      this.bindings.save(nodeId, { sessionId, materialDigest: '', selection: catalog.default })
-      return sessionId
-    })().finally(() => this.creating.delete(nodeId))
-    this.creating.set(nodeId, create)
-    return create
+    let creation = this.creating.get(nodeId)
+    if (!creation) {
+      const abort = new AbortController()
+      const preparing = AbortSignal.any([abort.signal, this.lifetime.signal])
+      const promise = (async () => {
+        const catalog = await waitFor(this.ctx.sessionController.modelCatalog(), preparing)
+        preparing.throwIfAborted()
+        const { sessionId } = await waitFor(
+          this.ctx.sessionController.create({ cwd: this.cwd }),
+          preparing,
+        )
+        preparing.throwIfAborted()
+        if (this.store.node(nodeId).removedAt) throw new Error('此研究分支已移除')
+        this.bindings.save(nodeId, { sessionId, materialDigest: '', selection: catalog.default })
+        return sessionId
+      })()
+      creation = { promise, abort, readers: 0 }
+      this.creating.set(nodeId, creation)
+    }
+    creation.readers++
+    try {
+      return await waitFor(creation.promise, signal)
+    } finally {
+      // A cancelled run must not cancel a model picker sharing the same creation.
+      if (--creation.readers === 0) {
+        if (this.creating.get(nodeId) === creation) this.creating.delete(nodeId)
+        creation.abort.abort(new Error('研究会话准备已取消'))
+      }
+    }
   }
   async models(nodeId: string) {
+    this.lifetime.signal.throwIfAborted()
     this.store.node(nodeId)
-    const catalog = await this.ctx.sessionController.modelCatalog()
+    const catalog = await waitFor(this.ctx.sessionController.modelCatalog(), this.lifetime.signal)
     return { catalog, selection: this.bindings.get(nodeId)?.selection ?? catalog.default }
   }
   async select(nodeId: string, selection: HostSelection) {
+    this.lifetime.signal.throwIfAborted()
     if (this.selections.has(nodeId)) throw new Error('正在切换模型，请稍后再试')
     const update = (async () => {
       const sessionId = await this.ensure(nodeId)
       if (this.turns.has(sessionId)) throw new Error('请等待当前研究结束后切换模型')
-      await this.ctx.sessionController.selectModel({ sessionId, ...selection })
+      await waitFor(
+        this.ctx.sessionController.selectModel({ sessionId, ...selection }),
+        this.lifetime.signal,
+      )
+      this.lifetime.signal.throwIfAborted()
       this.bindings.select(nodeId, selection)
     })()
     this.selections.set(nodeId, update)
@@ -172,6 +220,7 @@ export class DshRuntime {
   private publish(turn: Turn) {
     clearTimeout(turn.publishTimer)
     turn.publishTimer = undefined
+    if (this.lifetime.signal.aborted) return
     const run = this.store.run(turn.runId)
     if (run.status !== 'running') return
     turn.lastWrite = Date.now()
@@ -224,10 +273,11 @@ export class DshRuntime {
       )
     }
   }
-  async run(run: ResearchRun, signal: AbortSignal) {
-    const sessionId = await this.ensure(run.nodeId)
-    await this.selections.get(run.nodeId)
-    if (signal.aborted) throw new Error('研究已取消')
+  async run(run: ResearchRun, requestSignal: AbortSignal) {
+    const signal = AbortSignal.any([requestSignal, this.lifetime.signal])
+    const sessionId = await this.ensure(run.nodeId, signal)
+    await waitFor(this.selections.get(run.nodeId) ?? Promise.resolve(), signal)
+    signal.throwIfAborted()
     if (this.turns.has(sessionId)) throw new Error('此 DSH 会话仍在研究')
     const binding = this.bindings.get(run.nodeId)!
     this.store.saveRun({ ...this.store.run(run.id), model: binding.selection.model })
@@ -252,6 +302,11 @@ export class DshRuntime {
     ]
       .filter(Boolean)
       .join('\n\n')
+    const request = {
+      sessionId,
+      requestId: run.id,
+      content: [{ type: 'text' as const, text: prompt }],
+    }
     let settle!: (error?: Error) => void
     const completion = new Promise<void>((resolve, reject) => {
       settle = (error) => (error ? reject(error) : resolve())
@@ -268,6 +323,16 @@ export class DshRuntime {
         configuration: { ...binding.selection },
         activities: [],
         requests: [],
+        input: {
+          request,
+          submittedAt: new Date().toISOString(),
+          materials: {
+            digest,
+            previousDigest: binding.materialDigest,
+            included: bootstrap || binding.materialDigest !== digest,
+            historyIncluded: !!history,
+          },
+        },
       },
       committed: '',
       live: '',
@@ -287,10 +352,9 @@ export class DshRuntime {
     signal.addEventListener('abort', abort, { once: true })
     try {
       this.publish(turn)
-      await this.ctx.sessionController.prompt(
-        { sessionId, requestId: run.id, content: [{ type: 'text', text: prompt }] },
-        signal,
-      )
+      await waitFor(this.ctx.sessionController.prompt(request, signal), signal)
+      signal.throwIfAborted()
+      turn.agent.input!.acceptedAt = new Date().toISOString()
       this.bindings.save(run.nodeId, { ...binding, materialDigest: digest })
       await completion
       this.publish(turn)
@@ -300,15 +364,17 @@ export class DshRuntime {
       signal.removeEventListener('abort', abort)
       // Cancel drains before removing tools. Saved domain operations remain saved.
       if (signal.aborted)
-        await this.ctx.agents
-          .get(sessionId)
-          ?.whenIdle()
-          .catch(() => {})
+        await waitFor(
+          this.ctx.agents.get(sessionId)?.whenIdle() ?? Promise.resolve(),
+          this.lifetime.signal,
+        ).catch(() => {})
       for (const dispose of turn.toolDisposers.reverse()) await dispose()
       this.turns.delete(sessionId)
     }
   }
   async close() {
+    if (this.lifetime.signal.aborted) return
+    this.lifetime.abort(new Error('DSH 插件已关闭'))
     for (const turn of this.turns.values()) {
       this.ctx.agents.get(turn.sessionId)?.cancel({ kind: 'user' })
       turn.finish(new Error('DSH 插件已关闭'))

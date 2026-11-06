@@ -112,7 +112,9 @@ function RunDiagnostics({ run }: { run: ResearchRun }) {
       })
   return (
     <>
-      <h4>{t('实际使用的上下文')}</h4>
+      <h4>
+        {run.agent?.name === 'DeepSeek Harness' ? t('研究材料选择记录') : t('实际使用的上下文')}
+      </h4>
       <p className="muted small-text">
         {t('约 {{used}} / {{budget}} tokens', {
           used: run.context.estimatedTokens.toLocaleString(uiLocale()),
@@ -164,11 +166,15 @@ function RunDiagnostics({ run }: { run: ResearchRun }) {
       <details className="raw-details">
         <summary>{t('查看实际发送的输入')}</summary>
         <pre>
-          {run.session
-            ? JSON.stringify(run.session, null, 2)
-            : run.context.messages
-                .map((message) => `[${message.role}]\n${message.content}`)
-                .join('\n\n')}
+          {run.agent?.input
+            ? JSON.stringify(run.agent.input, null, 2)
+            : run.agent?.name === 'DeepSeek Harness'
+              ? t('此历史记录未保存原生请求，无法还原实际发送内容。')
+              : run.session
+                ? JSON.stringify(run.session, null, 2)
+                : run.context.messages
+                    .map((message) => `[${message.role}]\n${message.content}`)
+                    .join('\n\n')}
         </pre>
       </details>
       <details className="raw-details">

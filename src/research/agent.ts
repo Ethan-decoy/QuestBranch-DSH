@@ -73,6 +73,25 @@ export const AgentRunSchema = z.object({
   configuration: z.record(z.string().max(200), z.string().max(1000)).optional(),
   activities: z.array(AgentActivitySchema).max(500),
   requests: z.array(AgentRequestSchema).max(100),
+  input: z
+    .object({
+      request: z.object({
+        sessionId: z.string().min(1).max(200),
+        requestId: z.string().min(1).max(200),
+        content: z
+          .array(z.object({ type: z.literal('text'), text: z.string().max(400000) }))
+          .max(100),
+      }),
+      submittedAt: z.iso.datetime(),
+      acceptedAt: z.iso.datetime().optional(),
+      materials: z.object({
+        digest: z.string().regex(/^[a-f0-9]{64}$/),
+        previousDigest: z.string().regex(/^(?:[a-f0-9]{64})?$/),
+        included: z.boolean(),
+        historyIncluded: z.boolean(),
+      }),
+    })
+    .optional(),
 })
 export type AgentRun = z.infer<typeof AgentRunSchema>
 export type AgentClient = {

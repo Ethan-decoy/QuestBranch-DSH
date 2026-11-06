@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-questbranch",
-  "version": "0.1.0-dev.2",
+  "version": "0.1.0-dev.3",
   "description": "Branching research workspace inside DeepSeek Harness",
   "private": true,
   "type": "module",
@@ -19,6 +19,7 @@
     "chunks",
     "cordis.patch.yml",
     "README.md",
+    "README.en.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.txt",
     "CHANGELOG.md",

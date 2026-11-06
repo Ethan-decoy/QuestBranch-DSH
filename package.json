@@ -1,6 +1,6 @@
 {
   "name": "questbranch-dsh",
-  "version": "0.1.0-dev.2",
+  "version": "0.1.0-dev.3",
   "private": true,
   "type": "module",
   "description": "Branching research workspace for DeepSeek Harness",

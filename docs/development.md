@@ -9,7 +9,7 @@ pnpm notices:check
 pnpm pack:dsh
 ```
 
-`pack:dsh` 会先构建，再核对包清单并生成 SHA-256。构建输出固定在 `release/dsh/`，打包文件位于 `release/dsh-plugin-questbranch-0.1.0-dev.2.tgz`，旁有 `.sha256` 文件。使用 [README](../README.md) 中的 DSH 官方 CLI 安装这个文件，不能把源码目录或 GitHub 源码压缩包当作安装包。当前未提供 Git URL 安装所需的 `prepare` 流程。
+`pack:dsh` 会先构建，再核对包清单并生成 SHA-256。构建输出固定在 `release/dsh/`，打包文件位于 `release/dsh-plugin-questbranch-0.1.0-dev.3.tgz`，旁有 `.sha256` 文件。使用 [README](../README.md) 中的 DSH 官方 CLI 安装这个文件，不能把源码目录或 GitHub 源码压缩包当作安装包。当前未提供 Git URL 安装所需的 `prepare` 流程。
 
 插件版本以 `config/dsh-package.json` 为准，源码工作区 `package.json` 同步该版本；构建会拒绝两者不一致。已交付包的内容不能覆盖，修复使用新版本。插件更新交给 DSH，变更宿主范围后需要重新做原生安装与研究连续性验收；仅修改 `engines.dsh` 不构成兼容验证。源码工作区与插件保留 `private: true` 防止误发 npm；GitHub `.tgz` 分发不依赖 npm 发布，npm 渠道另行准备。
 

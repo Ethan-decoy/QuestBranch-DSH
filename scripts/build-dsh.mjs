@@ -79,6 +79,7 @@ writeFileSync(
 )
 for (const file of [
   'README.md',
+  'README.en.md',
   'LICENSE',
   'THIRD_PARTY_NOTICES.txt',
   'CHANGELOG.md',
